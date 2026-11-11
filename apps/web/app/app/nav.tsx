@@ -43,6 +43,7 @@ import { CrmPermissions } from "@digimuza/crm/manifest"
 import { DocumentsPermissions } from "@digimuza/documents/manifest"
 import { StaffingPermissions } from "@digimuza/staffing/manifest"
 import { useStaffingEnabled } from "./staffing/_components/staffing-ui"
+import { ComplianceNavItem } from "./compliance/_components/compliance-ui"
 import { useDocumentsEnabled, useLabels, useSigningVisible } from "./documents/_components/use-documents"
 import { ObjectIcon } from "./crm/_components/icons"
 import { useCrmSchema } from "./crm/_components/use-crm"
@@ -130,6 +131,7 @@ export function AppSidebar() {
                 {canProjects && <NavItem href="/app/staffing/projects" icon={<FolderKanban />} label={t("staffing.nav.projects")} />}
                 {canClients && <NavItem href="/app/staffing/clients" icon={<Building2 />} label={t("staffing.nav.clients")} />}
                 {/* staffing areas: one NavItem each below */}
+                <ComplianceNavItem Item={NavItem} />
                 {canCatalog && <NavItem href="/app/staffing/catalog" icon={<Library />} label={t("staffing.nav.catalog")} />}
               </SidebarMenu>
             </SidebarGroupContent>
