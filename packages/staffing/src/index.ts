@@ -38,3 +38,6 @@ export * from "./planning"
 // rounding). The root exposes the timesheets ones; areas import their own
 // from "./pure" relatively.
 export { isWeekend, roundHours } from "./timesheets/pure"
+// Planning and logistics (housing) both define these week helpers; the root
+// exposes the planning ones.
+export { mondayOf, type WeekCell } from "./planning/pure"
