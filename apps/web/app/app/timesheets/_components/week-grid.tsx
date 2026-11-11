@@ -55,7 +55,7 @@ export function ProjectTimesheet({ projectId }: { projectId: string }) {
       {grid ? (
         <header>
           <div className="font-mono text-xs text-muted-foreground">{grid.project.code}</div>
-          <h1 className="text-2xl font-semibold tracking-tight">{grid.project.name}</h1>
+          <h1 className="font-stencil-title text-[2.1rem] sm:text-[2.4rem]">{grid.project.name}</h1>
           <p className="text-sm text-muted-foreground">{grid.project.clientName}</p>
         </header>
       ) : (
@@ -211,11 +211,11 @@ function Grid({ grid, projectId }: { grid: WeekGrid; projectId: string }) {
                                 {showOvertime ? (
                                   <HourCell row={r} date={day} field="overtime" value={e?.overtime ?? 0} other={e} disabled={!editable} small />
                                 ) : (
-                                  !!e?.overtime && <span className="rounded bg-amber-100 px-1 text-[10px] font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-200">+{hours(e.overtime)}</span>
+                                  !!e?.overtime && <span className="rounded bg-marking/15 px-1 text-[10px] font-medium text-marking-foreground dark:text-marking dark:bg-marking/15 dark:text-marking">+{hours(e.overtime)}</span>
                                 )}
                                 <div className="flex gap-0.5">
-                                  {e?.night && <Moon className="size-3 text-indigo-500" aria-label={t("timesheets.grid.night")} />}
-                                  {e?.note && <span className="size-1.5 rounded-full bg-sky-500" title={e.note} />}
+                                  {e?.night && <Moon className="size-3 text-foreground" aria-label={t("timesheets.grid.night")} />}
+                                  {e?.note && <span className="size-1.5 rounded-full bg-secondary" title={e.note} />}
                                 </div>
                               </div>
                             ) : (

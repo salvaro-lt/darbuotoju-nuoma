@@ -41,10 +41,10 @@ export function TimesheetsOverview() {
     <div className="space-y-6">
       <PageHeader title={t("timesheets.overview.title")} lead={t("timesheets.overview.lead")} actions={actions} />
 
-      <Card className={late.length ? "border-amber-300 dark:border-amber-800" : undefined}>
+      <Card className={late.length ? "border-marking-foreground/50 dark:border-marking-foreground/50" : undefined}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <AlarmClock className="size-4 text-amber-600" />
+            <AlarmClock className="size-4 text-marking-foreground dark:text-marking" />
             {t("timesheets.late.title")}
             {late.length > 0 && <Badge variant="destructive">{late.length}</Badge>}
           </CardTitle>
@@ -55,7 +55,7 @@ export function TimesheetsOverview() {
             <Skeleton className="h-16 w-full" />
           ) : late.length === 0 ? (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CheckCircle2 className="size-4 text-emerald-600" />
+              <CheckCircle2 className="size-4 text-steel-green" />
               {t("timesheets.late.none")}
             </p>
           ) : (

@@ -60,8 +60,8 @@ export function Workwear({ plan }: { plan: LogisticsPlan }) {
       </CardHeader>
       <CardContent className="space-y-5">
         {p.missing.length > 0 && (
-          <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:border-amber-800 dark:bg-amber-950/40">
-            <p className="flex items-center gap-1.5 font-medium text-amber-900 dark:text-amber-200">
+          <div className="rounded-lg border border-marking-foreground/50 bg-marking/15 px-3 py-2 text-sm dark:border-marking-foreground/50 dark:bg-marking/20">
+            <p className="flex items-center gap-1.5 font-medium text-marking-foreground dark:text-marking dark:text-marking">
               <AlertTriangle className="size-4" />
               {t("logistics.ww.missing")}
             </p>
@@ -112,7 +112,7 @@ export function Workwear({ plan }: { plan: LogisticsPlan }) {
                   <TableRow key={r.workerId}>
                     <TableCell className="font-medium">{r.name}</TableCell>
                     {(["jacket", "trousers", "shoes"] as const).map((f) => (
-                      <TableCell key={f} className={r.sizes[f] ? "tabular-nums" : "font-medium text-red-700 dark:text-red-400"}>
+                      <TableCell key={f} className={r.sizes[f] ? "tabular-nums" : "font-medium text-destructive dark:text-destructive"}>
                         {r.sizes[f] || "?"}
                       </TableCell>
                     ))}

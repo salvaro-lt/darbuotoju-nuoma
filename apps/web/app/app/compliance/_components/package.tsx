@@ -159,7 +159,7 @@ export function ProjectPackageView({ projectId }: { projectId: string }) {
                 </TableHeader>
                 <TableBody>
                   {pkg.rows.map((row) => (
-                    <TableRow key={row.assignmentId} className={row.readiness === "blocked" ? "bg-red-50/60 dark:bg-red-950/20" : undefined}>
+                    <TableRow key={row.assignmentId} className={row.readiness === "blocked" ? "bg-destructive/[0.06] dark:bg-destructive/10" : undefined}>
                       <TableCell className="align-top">
                         <div className="font-medium">{row.workerName}</div>
                         <div className="text-xs text-muted-foreground">

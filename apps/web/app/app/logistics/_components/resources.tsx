@@ -264,10 +264,10 @@ function Vehicles({ plan }: { plan: LogisticsPlan }) {
                         </div>
                         <div className="text-xs text-muted-foreground">{t(`logistics.veh.own.${v.ownership}` as MessageKey)}</div>
                       </TableCell>
-                      <TableCell className={`text-right tabular-nums ${r.length > v.seats ? "font-semibold text-red-700" : ""}`}>
+                      <TableCell className={`text-right tabular-nums ${r.length > v.seats ? "font-semibold text-destructive" : ""}`}>
                         {new Set(r.map((m) => m.workerId)).size} / {v.seats}
                       </TableCell>
-                      <TableCell>{driver ? driver.name : <span className="font-medium text-red-700 dark:text-red-400">{t("logistics.timeline.noDriver")}</span>}</TableCell>
+                      <TableCell>{driver ? driver.name : <span className="font-medium text-destructive dark:text-destructive">{t("logistics.timeline.noDriver")}</span>}</TableCell>
                       <TableCell className="text-right whitespace-nowrap tabular-nums">
                         {eur(v.costCents)} <span className="text-xs text-muted-foreground">{t(`logistics.veh.period.${v.costPeriod}` as MessageKey)}</span>
                       </TableCell>

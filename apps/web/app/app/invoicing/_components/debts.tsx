@@ -111,7 +111,7 @@ export function DebtsView() {
                               </Badge>
                             ))}
                             {r.reminderDue && (
-                              <Badge variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-300">
+                              <Badge variant="outline" className="border-marking-foreground/50 text-marking-foreground dark:text-marking dark:text-marking">
                                 {t("invoicing.debts.due").replace("{stage}", t(`invoicing.reminder.stage${r.reminderDue}` as MessageKey))}
                               </Badge>
                             )}

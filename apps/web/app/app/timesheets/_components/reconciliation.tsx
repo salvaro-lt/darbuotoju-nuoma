@@ -28,11 +28,11 @@ import { SheetStatusBadge } from "./client-sheets"
 import { fmt, parseHoursInput, projectTimesheetHref, TimesheetsDisabled, useDateFormat, useHours, useTimesheetsEnabled } from "./timesheets-ui"
 
 const KIND_STYLE: Record<ReconcileLine["kind"], string> = {
-  ok: "bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
-  diff: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-  missing_ours: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
-  missing_theirs: "bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200",
-  unknown_worker: "bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100",
+  ok: "bg-steel-green/15 text-steel-green dark:bg-steel-green/15 dark:text-steel-green",
+  diff: "bg-marking/15 text-marking-foreground dark:text-marking dark:bg-marking/15 dark:text-marking",
+  missing_ours: "bg-destructive/15 text-destructive dark:bg-destructive/15 dark:text-destructive",
+  missing_theirs: "bg-secondary text-foreground dark:bg-secondary dark:text-foreground",
+  unknown_worker: "bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground",
 }
 
 export function Reconciliation({ sheetId }: { sheetId: string }) {
@@ -60,7 +60,7 @@ export function Reconciliation({ sheetId }: { sheetId: string }) {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="font-mono text-xs text-muted-foreground">{view.project.code}</div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("timesheets.rec.title")}</h1>
+          <h1 className="font-stencil-title text-[2.1rem] sm:text-[2.4rem]">{t("timesheets.rec.title")}</h1>
           <p className="text-sm text-muted-foreground">
             {view.project.name} · {view.project.clientName} · {d.full(sheet.periodFrom)} – {d.full(sheet.periodTo)}
           </p>
@@ -95,7 +95,7 @@ export function Reconciliation({ sheetId }: { sheetId: string }) {
         </div>
         {lines.length === 0 ? (
           <p className="flex items-center gap-2 rounded-xl border bg-card p-4 text-sm text-muted-foreground">
-            <Check className="size-4 text-emerald-600" />
+            <Check className="size-4 text-steel-green" />
             {t("timesheets.rec.allGood")}
           </p>
         ) : (
@@ -124,7 +124,7 @@ export function Reconciliation({ sheetId }: { sheetId: string }) {
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{l.ours === null ? "—" : hours(l.ours, true)}</TableCell>
                     <TableCell className="text-right tabular-nums">{l.theirs === null ? "—" : hours(l.theirs, true)}</TableCell>
-                    <TableCell className={`text-right font-medium tabular-nums ${l.diff > 0 ? "text-red-600" : l.diff < 0 ? "text-sky-700 dark:text-sky-400" : "text-muted-foreground"}`}>
+                    <TableCell className={`text-right font-medium tabular-nums ${l.diff > 0 ? "text-destructive" : l.diff < 0 ? "text-foreground dark:text-foreground" : "text-muted-foreground"}`}>
                       {l.diff ? `${l.diff > 0 ? "+" : ""}${hours(l.diff)}` : "0"}
                     </TableCell>
                     <TableCell>
@@ -147,7 +147,7 @@ export function Reconciliation({ sheetId }: { sheetId: string }) {
 
 function Stat({ label, value, hint, warn }: { label: string; value: string; hint?: string | undefined; warn?: boolean }) {
   return (
-    <div className={`rounded-xl border bg-card p-4 ${warn ? "border-amber-300 dark:border-amber-800" : ""}`}>
+    <div className={`rounded-xl border bg-card p-4 ${warn ? "border-marking-foreground/50 dark:border-marking-foreground/50" : ""}`}>
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
       {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
@@ -204,7 +204,7 @@ function LineActions({ view, line }: { view: ReconciliationView; line: Reconcile
   if (done && !editing)
     return (
       <div className="flex items-center gap-2 text-sm">
-        <Check className="size-4 text-emerald-600" />
+        <Check className="size-4 text-steel-green" />
         <span>{t(`timesheets.rec.resolved.${done.action}` as MessageKey)}</span>
         {done.note && <span className="max-w-48 truncate text-muted-foreground" title={done.note}>„{done.note}“</span>}
         {can && (

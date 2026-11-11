@@ -111,7 +111,7 @@ export function InvoicesList() {
                     <InvoiceStatusBadge status={i.status} overdueDays={i.daysOverdue} />
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{money(i.totalCents, i.currency)}</TableCell>
-                  <TableCell className={`pr-4 text-right tabular-nums ${i.overdue ? "font-semibold text-red-600 dark:text-red-400" : ""}`}>{i.outstandingCents ? money(i.outstandingCents, i.currency) : "—"}</TableCell>
+                  <TableCell className={`pr-4 text-right tabular-nums ${i.overdue ? "font-semibold text-destructive dark:text-destructive" : ""}`}>{i.outstandingCents ? money(i.outstandingCents, i.currency) : "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -435,7 +435,7 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
               <Row label={t("invoicing.col.dueDate")}>{inv.dueDate ?? `+${d.client.paymentTermsDays} d.`}</Row>
               <Row label={t("invoicing.paid")}>{money(inv.paidCents, inv.currency)}</Row>
               <Row label={t("invoicing.col.outstanding")}>
-                <span className={inv.overdue ? "font-semibold text-red-600 dark:text-red-400" : "font-semibold"}>{money(inv.outstandingCents, inv.currency)}</span>
+                <span className={inv.overdue ? "font-semibold text-destructive dark:text-destructive" : "font-semibold"}>{money(inv.outstandingCents, inv.currency)}</span>
               </Row>
               <Row label={t("invoicing.client.contact")}>{d.client.contactName ? `${d.client.contactName}${d.client.contactEmail ? ` · ${d.client.contactEmail}` : ""}` : "—"}</Row>
               {d.nextReminder && (

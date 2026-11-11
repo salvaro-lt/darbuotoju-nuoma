@@ -7,7 +7,7 @@ import { FrameRuler, frameStartFor } from "./frame-ruler"
  */
 export function PageHeader({ title, lead, actions }: { title: string; lead?: string; actions?: ReactNode }) {
   return (
-    <header className="mb-7">
+    <header className="mb-7 min-w-0">
       <div className="flex flex-wrap items-end justify-between gap-4 pb-3">
         <div className="min-w-0">
           <h1 className="font-stencil-title text-[2.1rem] text-foreground sm:text-[2.6rem]">{title}</h1>

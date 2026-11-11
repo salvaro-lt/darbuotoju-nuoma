@@ -72,9 +72,9 @@ export function ExpiringView() {
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
         {(
           [
-            ["expired", "compliance.expiring.expired", "text-red-600"],
-            ["30", "compliance.expiring.in30", "text-orange-600"],
-            ["60", "compliance.expiring.in60", "text-amber-600"],
+            ["expired", "compliance.expiring.expired", "text-destructive"],
+            ["30", "compliance.expiring.in30", "text-marking-foreground dark:text-marking"],
+            ["60", "compliance.expiring.in60", "text-marking-foreground dark:text-marking"],
           ] as const
         ).map(([w, key, color]) => (
           <button key={w} type="button" onClick={() => setWin(win === w ? "all" : w)} className={`rounded-xl border p-4 text-left transition-colors hover:bg-muted/50 ${win === w ? "ring-2 ring-ring" : ""}`}>
@@ -146,7 +146,7 @@ export function ExpiringView() {
                           {t(i.project.when === "current" ? "compliance.expiring.current" : "compliance.expiring.next")} · {i.project.startDate} – {i.project.endDate ?? "…"}
                         </span>
                         {i.hitsProject && (
-                          <span className="inline-flex items-center gap-1 text-xs text-red-700 dark:text-red-400">
+                          <span className="inline-flex items-center gap-1 text-xs text-destructive dark:text-destructive">
                             <TriangleAlert className="size-3" />
                             {t("compliance.expiring.hits")}
                           </span>

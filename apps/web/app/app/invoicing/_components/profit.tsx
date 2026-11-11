@@ -28,7 +28,7 @@ const pct = (p: number | null) => (p === null ? "—" : `${p.toLocaleString("lt-
 
 function MarginBadge({ value }: { value: number | null }) {
   const tone = marginTone(value)
-  const cls = tone === "bad" ? "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200" : tone === "warn" ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200" : tone === "good" ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200" : ""
+  const cls = tone === "bad" ? "bg-destructive/15 text-destructive dark:bg-destructive/15 dark:text-destructive" : tone === "warn" ? "bg-marking/15 text-marking-foreground dark:text-marking dark:bg-marking/15 dark:text-marking" : tone === "good" ? "bg-steel-green/15 text-steel-green dark:bg-steel-green/15 dark:text-steel-green" : ""
   return (
     <Badge variant="outline" className={`border-transparent tabular-nums ${cls}`}>
       {pct(value)}
@@ -82,12 +82,12 @@ export function PortfolioView() {
               <TableBody>
                 {withData.map((r) => (
                   <TableRow key={r.projectId}>
-                    <TableCell className="px-4">
+                    <TableCell className="min-w-[13rem] px-4 whitespace-normal">
                       <Link href={profitHref(r.projectId)} className="font-medium hover:underline">
                         <span className="font-mono text-xs">{r.code}</span> · {r.name}
                       </Link>
                     </TableCell>
-                    <TableCell>{r.clientName}</TableCell>
+                    <TableCell className="whitespace-normal">{r.clientName}</TableCell>
                     <TableCell>
                       <ProjectStatusBadge status={r.status as "active"} />
                     </TableCell>
@@ -162,11 +162,11 @@ export function ProjectProfitView({ projectId }: { projectId: string }) {
             <CardTitle className="text-base">{t("invoicing.profit.weekly")}</CardTitle>
             <div className="flex gap-4 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
-                <span className="size-2.5 rounded-sm bg-primary" aria-hidden />
+                <span className="size-2.5 rounded-sm bg-foreground/80" aria-hidden />
                 {t("invoicing.profit.earned")}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="size-2.5 rounded-sm bg-rose-400" aria-hidden />
+                <span className="size-2.5 rounded-sm bg-primary" aria-hidden />
                 {t("invoicing.profit.costs")}
               </span>
             </div>
@@ -180,10 +180,10 @@ export function ProjectProfitView({ projectId }: { projectId: string }) {
                   const m = w.revenueCents ? Math.round(((w.revenueCents - w.costCents) / w.revenueCents) * 100) : null
                   return (
                     <div key={w.week} className="flex min-w-12 flex-1 flex-col items-center gap-1" title={`${w.week}: ${money(w.revenueCents)} / ${money(w.costCents)}`}>
-                      <span className={`text-[10px] tabular-nums ${m !== null && m < 10 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>{m === null ? "" : `${m}%`}</span>
+                      <span className={`text-[10px] tabular-nums ${m !== null && m < 10 ? "text-destructive dark:text-destructive" : "text-muted-foreground"}`}>{m === null ? "" : `${m}%`}</span>
                       <div className="flex h-40 w-full items-end justify-center gap-0.5">
-                        <div className="w-1/2 max-w-5 rounded-t bg-primary" style={{ height: `${(w.revenueCents / max) * 100}%` }} />
-                        <div className="w-1/2 max-w-5 rounded-t bg-rose-400" style={{ height: `${(w.costCents / max) * 100}%` }} />
+                        <div className="w-1/2 max-w-5 rounded-t bg-foreground/80" style={{ height: `${(w.revenueCents / max) * 100}%` }} />
+                        <div className="w-1/2 max-w-5 rounded-t bg-primary" style={{ height: `${(w.costCents / max) * 100}%` }} />
                       </div>
                       <span className="text-[10px] whitespace-nowrap text-muted-foreground tabular-nums">{w.week.slice(5)}</span>
                     </div>
@@ -207,7 +207,7 @@ export function ProjectProfitView({ projectId }: { projectId: string }) {
                     <span className="tabular-nums">{money(d.byCategory[c])}</span>
                   </div>
                   <div className="mt-1 h-1.5 rounded-full bg-muted">
-                    <div className="h-1.5 rounded-full bg-rose-400" style={{ width: `${(d.byCategory[c] / costTotal) * 100}%` }} />
+                    <div className="h-1.5 rounded-full bg-primary/70" style={{ width: `${(d.byCategory[c] / costTotal) * 100}%` }} />
                   </div>
                 </div>
               ))}

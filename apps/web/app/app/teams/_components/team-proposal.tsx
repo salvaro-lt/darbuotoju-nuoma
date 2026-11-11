@@ -89,7 +89,7 @@ function ProposalView({ data }: { data: Data }) {
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight">{r.clientName}</h1>
+              <h1 className="font-stencil-title text-[2.1rem] sm:text-[2.4rem]">{r.clientName}</h1>
               <RequestStatusBadge status={r.status} />
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -133,7 +133,7 @@ function ProposalView({ data }: { data: Data }) {
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="grid gap-4">
           {locked && r.status === "confirmed" && (
-            <p className="flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+            <p className="flex items-center gap-2 rounded-lg border border-steel-green/60 bg-steel-green/15 px-3 py-2 text-sm text-steel-green dark:border-steel-green/60 dark:bg-steel-green/20 dark:text-steel-green">
               <CheckCircle2 className="size-4" />
               {t("teams.detail.readOnly")}
             </p>
@@ -229,13 +229,13 @@ function ProposalView({ data }: { data: Data }) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="size-4 text-amber-600" />
+                <AlertTriangle className="size-4 text-marking-foreground dark:text-marking" />
                 {t("teams.gaps.title")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {p.gaps.length === 0 ? (
-                <p className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
+                <p className="flex items-center gap-2 text-sm text-steel-green dark:text-steel-green">
                   <CheckCircle2 className="size-4" />
                   {t("teams.gaps.none")}
                 </p>
@@ -243,7 +243,7 @@ function ProposalView({ data }: { data: Data }) {
                 <ul className="grid gap-2 text-sm">
                   {(locale === "en" ? p.gapText.en : p.gapText.lt).map((g, k) => (
                     <li key={k} className="flex gap-2">
-                      <span className={`mt-1.5 size-1.5 shrink-0 rounded-full ${p.gaps[k]!.kind === "people" || p.gaps[k]!.kind === "busy" ? "bg-red-600" : "bg-amber-500"}`} aria-hidden />
+                      <span className={`mt-1.5 size-1.5 shrink-0 rounded-full ${p.gaps[k]!.kind === "people" || p.gaps[k]!.kind === "busy" ? "bg-destructive/80" : "bg-marking"}`} aria-hidden />
                       {g}
                     </li>
                   ))}
@@ -292,7 +292,7 @@ function PickRow(props: {
   const { pick, cand } = props
   const warnings = cand?.warnings ?? []
   return (
-    <div className={`grid gap-2 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_auto] ${props.flagged || !cand ? "border-red-400 bg-red-50/60 dark:border-red-900 dark:bg-red-950/30" : ""}`}>
+    <div className={`grid gap-2 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_auto] ${props.flagged || !cand ? "border-destructive/60 bg-destructive/10 dark:border-destructive/60 dark:bg-destructive/20" : ""}`}>
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <Link href={workerHref(pick.workerId)} className="font-medium hover:underline">
@@ -392,7 +392,7 @@ function DraftCard({ data, draft }: { data: Data; draft: (lang: "lt" | "en") => 
             </Button>
             <p className="text-xs text-muted-foreground">{t("teams.draft.aiLead")}</p>
             {d && (
-              <p className={`text-xs ${d.status === "failed" ? "text-destructive" : d.status === "sent" ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>
+              <p className={`text-xs ${d.status === "failed" ? "text-destructive" : d.status === "sent" ? "text-steel-green dark:text-steel-green" : "text-muted-foreground"}`}>
                 {t(`teams.draft.status.${d.status}` as MessageKey)}
                 {d.status === "sent" && d.to ? ` ${d.to}` : ""}
                 {d.error ? ` (${d.error})` : ""}

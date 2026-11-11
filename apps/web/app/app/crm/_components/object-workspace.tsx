@@ -143,7 +143,7 @@ function Workspace({ object }: { object: CrmObjectView }) {
             <ObjectIcon name={object.icon} className="size-4.5" />
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-xl font-semibold tracking-tight">{object.namePlural}</h1>
+            <h1 className="font-stencil-title truncate text-[1.9rem]">{object.namePlural}</h1>
             <p className="text-xs text-muted-foreground tabular-nums">
               {t("crm.total")}: {result ? result.total : "…"}
             </p>

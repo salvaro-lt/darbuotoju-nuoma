@@ -4,7 +4,7 @@ import type { LogisticsPlan } from "@digimuza/staffing"
 import type { ReactNode } from "react"
 import { useT } from "@/lib/i18n/client"
 
-const OTHER_COLORS = ["bg-violet-400/70", "bg-teal-400/70", "bg-orange-400/70", "bg-pink-400/70", "bg-lime-500/70"]
+const OTHER_COLORS = ["bg-secondary", "bg-steel-green/70", "bg-marking/70", "bg-secondary", "bg-steel-green/70"]
 
 const dayOfWeek = (iso: string) => new Date(`${iso}T00:00:00Z`).getUTCDay()
 
@@ -52,7 +52,7 @@ export function Timeline({ plan }: { plan: LogisticsPlan }) {
           {/* people vs beds */}
           {label(t("logistics.timeline.people"))}
           {plan.plan.days.map((d) =>
-            dayCell(d.date, d.people || d.beds ? `${d.people}/${d.beds}` : "", d.people > d.beds ? "bg-red-500/80 font-semibold text-white" : d.people > 0 && d.people < d.beds ? "text-amber-700 dark:text-amber-400" : ""),
+            dayCell(d.date, d.people || d.beds ? `${d.people}/${d.beds}` : "", d.people > d.beds ? "bg-destructive/80 font-semibold text-white" : d.people > 0 && d.people < d.beds ? "text-marking-foreground dark:text-marking dark:text-marking" : ""),
           )}
           {/* workers */}
           {workers.map(([id, name]) => (
@@ -66,8 +66,8 @@ export function Timeline({ plan }: { plan: LogisticsPlan }) {
                 return dayCell(
                   d,
                   <>
-                    {seg && <span className={`absolute inset-x-0 inset-y-1 ${color} ${bedless ? "ring-2 ring-red-600 ring-inset" : ""}`} title={seg.projectCode} />}
-                    {leg && <span className={`relative z-[1] size-2.5 rounded-full border-2 ${leg.booked ? "border-foreground bg-background" : "border-red-600 bg-red-200"}`} title={`${leg.fromCity} → ${leg.toCity}`} />}
+                    {seg && <span className={`absolute inset-x-0 inset-y-1 ${color} ${bedless ? "ring-2 ring-destructive ring-inset" : ""}`} title={seg.projectCode} />}
+                    {leg && <span className={`relative z-[1] size-2.5 rounded-full border-2 ${leg.booked ? "border-foreground bg-background" : "border-destructive/60 bg-destructive/15"}`} title={`${leg.fromCity} → ${leg.toCity}`} />}
                   </>,
                 )
               })}
@@ -83,7 +83,7 @@ export function Timeline({ plan }: { plan: LogisticsPlan }) {
                 {days.map((d, i) => {
                   const n = load[i]
                   if (n === null || n === undefined) return dayCell(d, "")
-                  return dayCell(d, n, n > a.beds ? "bg-red-500/80 text-white font-semibold" : n < a.beds ? "bg-amber-200/70 dark:bg-amber-900/50" : "bg-emerald-200/70 dark:bg-emerald-900/50")
+                  return dayCell(d, n, n > a.beds ? "bg-destructive/80 text-white font-semibold" : n < a.beds ? "bg-marking/60 dark:bg-marking/40" : "bg-steel-green/25 dark:bg-steel-green/30")
                 })}
               </Row>
             )
@@ -99,7 +99,7 @@ export function Timeline({ plan }: { plan: LogisticsPlan }) {
                   const n = row?.load[i]
                   if (n === null || n === undefined) return dayCell(d, "")
                   const driverOk = row?.driverOk?.[i] ?? false
-                  return dayCell(d, n, n > v.seats ? "bg-red-500/80 text-white font-semibold" : !driverOk ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300" : "bg-sky-200/70 dark:bg-sky-900/50")
+                  return dayCell(d, n, n > v.seats ? "bg-destructive/80 text-white font-semibold" : !driverOk ? "bg-destructive/15 text-destructive dark:bg-destructive/15 dark:text-destructive" : "bg-secondary dark:bg-secondary")
                 })}
               </Row>
             )
@@ -128,14 +128,14 @@ function Legend({ otherCodes }: { otherCodes: (readonly [string, string])[] }) {
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
       {item("bg-primary/70", t("logistics.timeline.legend.own"))}
       {otherCodes.map(([code, color]) => item(color, code))}
-      {item("bg-primary/70 ring-2 ring-red-600 ring-inset", t("logistics.team.noBed"))}
+      {item("bg-primary/70 ring-2 ring-destructive ring-inset", t("logistics.team.noBed"))}
       <span className="inline-flex items-center gap-1.5">
-        <span className="size-2.5 rounded-full border-2 border-foreground bg-background" />/<span className="size-2.5 rounded-full border-2 border-red-600 bg-red-200" />
+        <span className="size-2.5 rounded-full border-2 border-foreground bg-background" />/<span className="size-2.5 rounded-full border-2 border-destructive/60 bg-destructive/15" />
         {t("logistics.timeline.legend.arrival")}
       </span>
-      {item("bg-red-500/80", t("logistics.timeline.legend.short"))}
-      {item("bg-amber-200/70", t("logistics.timeline.legend.empty"))}
-      {item("bg-red-100 dark:bg-red-950", t("logistics.timeline.noDriver"))}
+      {item("bg-destructive/80", t("logistics.timeline.legend.short"))}
+      {item("bg-marking/70", t("logistics.timeline.legend.empty"))}
+      {item("bg-destructive/15 dark:bg-destructive/15", t("logistics.timeline.noDriver"))}
     </div>
   )
 }

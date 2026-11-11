@@ -69,7 +69,7 @@ function Loaded({ object, objects, detail }: { object: CrmObjectView; objects: C
         </nav>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight break-words">{record.label || "…"}</h1>
+            <h1 className="font-stencil-title text-[2.1rem] sm:text-[2.4rem] break-words">{record.label || "…"}</h1>
             <p className="mt-1 text-xs text-muted-foreground tabular-nums">
               {object.nameSingular} · {t("crm.record.createdAt")} {date(record.createdAt)} · {t("crm.record.updated")} {date(record.updatedAt)}
             </p>

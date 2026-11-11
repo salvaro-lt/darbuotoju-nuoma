@@ -41,9 +41,9 @@ export function useWarningText() {
 }
 
 const SEV_STYLE: Record<Severity, string> = {
-  error: "text-red-700 dark:text-red-400",
-  warning: "text-amber-700 dark:text-amber-400",
-  info: "text-sky-700 dark:text-sky-400",
+  error: "text-destructive dark:text-destructive",
+  warning: "text-marking-foreground dark:text-marking dark:text-marking",
+  info: "text-foreground dark:text-foreground",
 }
 export function SeverityIcon({ severity }: { severity: Severity }) {
   const { t } = useT()
@@ -54,7 +54,7 @@ export function SeverityIcon({ severity }: { severity: Severity }) {
 /** Small count pill: red for errors, amber for warnings. */
 export function CountPill({ n, tone, label }: { n: number; tone: "error" | "warning"; label: string }) {
   if (n === 0) return null
-  const cls = tone === "error" ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+  const cls = tone === "error" ? "bg-destructive/15 text-destructive dark:bg-destructive/15 dark:text-destructive" : "bg-marking/15 text-marking-foreground dark:text-marking dark:bg-marking/15 dark:text-marking"
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${cls}`}>
       {n} {label}

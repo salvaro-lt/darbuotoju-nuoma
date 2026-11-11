@@ -90,7 +90,7 @@ function Cell({ cell }: { cell: ReadinessCellView }) {
       {cell.expiresAt && <span className="text-[11px] tabular-nums text-muted-foreground">{cell.expiresAt}</span>}
       {cell.number && <span className="text-[11px] text-muted-foreground">{cell.number}</span>}
       {cell.expiresDuring && (
-        <span className="inline-flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400">
+        <span className="inline-flex items-center gap-1 text-[11px] text-marking-foreground dark:text-marking dark:text-marking">
           <TriangleAlert className="size-3" />
           {t("compliance.readiness.expiresDuring")}
         </span>
@@ -165,7 +165,7 @@ export function ProjectReadinessView({ projectId }: { projectId: string }) {
                 </TableHeader>
                 <TableBody>
                   {r.rows.map((row) => (
-                    <TableRow key={row.assignmentId} className={row.readiness === "blocked" ? "bg-red-50/60 dark:bg-red-950/20" : undefined}>
+                    <TableRow key={row.assignmentId} className={row.readiness === "blocked" ? "bg-destructive/[0.06] dark:bg-destructive/10" : undefined}>
                       <TableCell className="align-top">
                         <Link href={workerHref(row.workerId)} className="font-medium hover:underline">
                           {row.workerName}
@@ -186,7 +186,7 @@ export function ProjectReadinessView({ projectId }: { projectId: string }) {
                       <TableCell className="align-top">
                         <ReadinessBadge readiness={row.readiness} />
                         {row.blockers.length > 0 && (
-                          <div className="mt-1 max-w-48 text-[11px] text-red-700 dark:text-red-400">
+                          <div className="mt-1 max-w-48 text-[11px] text-destructive dark:text-destructive">
                             {t("compliance.readiness.blockers")}: {row.blockers.join(", ")}
                           </div>
                         )}
@@ -204,7 +204,7 @@ export function ProjectReadinessView({ projectId }: { projectId: string }) {
           <CertBadge key={s} status={s} />
         ))}
         <Badge variant="outline">
-          <TriangleAlert className="size-3 text-amber-600" />
+          <TriangleAlert className="size-3 text-marking-foreground dark:text-marking" />
           {t("compliance.readiness.expiresDuring")}
         </Badge>
       </div>

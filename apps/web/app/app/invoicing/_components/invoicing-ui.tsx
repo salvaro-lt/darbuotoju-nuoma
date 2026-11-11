@@ -39,10 +39,10 @@ export const fmtHours = (h: number) => (Math.round(h * 100) / 100).toLocaleStrin
 
 const STATUS_CLASS: Record<InvoiceStatus, string> = {
   draft: "border-dashed",
-  approved: "bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200 border-transparent",
-  sent: "bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-200 border-transparent",
-  partially_paid: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border-transparent",
-  paid: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 border-transparent",
+  approved: "bg-secondary text-foreground dark:bg-secondary dark:text-foreground border-transparent",
+  sent: "bg-secondary text-foreground dark:bg-secondary dark:text-foreground border-transparent",
+  partially_paid: "bg-marking/15 text-marking-foreground dark:text-marking dark:bg-marking/15 dark:text-marking border-transparent",
+  paid: "bg-steel-green/15 text-steel-green dark:bg-steel-green/15 dark:text-steel-green border-transparent",
 }
 
 export function InvoiceStatusBadge({ status, overdueDays }: { status: InvoiceStatus; overdueDays?: number }) {
@@ -95,7 +95,7 @@ export function InvoicingDisabled() {
 
 /** A KPI tile. */
 export function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "bad" | "good" | "warn" }) {
-  const toneClass = tone === "bad" ? "text-red-600 dark:text-red-400" : tone === "good" ? "text-emerald-700 dark:text-emerald-400" : tone === "warn" ? "text-amber-700 dark:text-amber-400" : ""
+  const toneClass = tone === "bad" ? "text-destructive dark:text-destructive" : tone === "good" ? "text-steel-green dark:text-steel-green" : tone === "warn" ? "text-marking-foreground dark:text-marking dark:text-marking" : ""
   return (
     <div className="rounded-xl border bg-card p-4">
       <div className="text-xs text-muted-foreground">{label}</div>

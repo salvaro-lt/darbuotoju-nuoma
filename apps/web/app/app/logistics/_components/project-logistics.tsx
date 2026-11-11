@@ -145,20 +145,20 @@ function ChangeBanner({ plan }: { plan: LogisticsPlan }) {
   }
   if (d.added.length + d.removed.length + d.changed.length === 0) return null
   return (
-    <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/40" role="status">
+    <div className="rounded-xl border border-marking-foreground/50 bg-marking/15 px-4 py-3 dark:border-marking-foreground/50 dark:bg-marking/20" role="status">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-medium text-amber-900 dark:text-amber-200">{t("logistics.diff.title")}</p>
-          <p className="text-sm text-amber-900/80 dark:text-amber-200/80">{t("logistics.diff.lead")}</p>
+          <p className="font-medium text-marking-foreground dark:text-marking dark:text-marking">{t("logistics.diff.title")}</p>
+          <p className="text-sm text-marking-foreground dark:text-marking dark:text-marking">{t("logistics.diff.lead")}</p>
           <ul className="mt-2 space-y-0.5 text-sm">
             {d.added.map((e) => (
               <li key={`a${e.workerId}`}>
-                <span className="font-medium text-emerald-700 dark:text-emerald-400">+ {t("logistics.diff.added")}:</span> {e.name} <span className="text-muted-foreground tabular-nums">({e.ranges.replaceAll("..", " – ")})</span>
+                <span className="font-medium text-steel-green dark:text-steel-green">+ {t("logistics.diff.added")}:</span> {e.name} <span className="text-muted-foreground tabular-nums">({e.ranges.replaceAll("..", " – ")})</span>
               </li>
             ))}
             {d.removed.map((e) => (
               <li key={`r${e.workerId}`}>
-                <span className="font-medium text-red-700 dark:text-red-400">− {t("logistics.diff.removed")}:</span> {e.name}
+                <span className="font-medium text-destructive dark:text-destructive">− {t("logistics.diff.removed")}:</span> {e.name}
               </li>
             ))}
             {d.changed.map((c) => (
@@ -356,7 +356,7 @@ function TeamTable({ plan }: { plan: LogisticsPlan }) {
                           aria-label={t("logistics.team.bed")}
                           value={m.accommodationId ?? ""}
                           onChange={(v) => set(m, { accommodationId: v || null })}
-                          className={`w-48 ${noBedIds.has(m.workerId) ? "border-red-500 text-red-700 dark:text-red-400" : ""}`}
+                          className={`w-48 ${noBedIds.has(m.workerId) ? "border-destructive/60 text-destructive dark:text-destructive" : ""}`}
                           disabled={!canManage || busy}
                         >
                           <option value="">{t("logistics.team.noBed")}</option>
@@ -415,7 +415,7 @@ function CostsCard({ plan }: { plan: LogisticsPlan }) {
         {items.map(([label, cents, waste]) => (
           <div key={label} className="rounded-xl border bg-card px-4 py-3">
             <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className={`text-lg font-semibold tabular-nums ${waste && cents > 0 ? "text-amber-700 dark:text-amber-400" : ""}`}>{eur(cents)}</dd>
+            <dd className={`text-lg font-semibold tabular-nums ${waste && cents > 0 ? "text-marking-foreground dark:text-marking dark:text-marking" : ""}`}>{eur(cents)}</dd>
           </div>
         ))}
       </dl>

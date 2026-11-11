@@ -63,7 +63,7 @@ function Loaded({ object, objects }: { object: CrmObjectView; objects: CrmObject
               <ObjectIcon name={object.icon} className="size-5" />
             </span>
             <div className="min-w-0">
-              <h1 className="truncate text-2xl font-semibold tracking-tight">{object.namePlural}</h1>
+              <h1 className="truncate font-stencil-title text-[2.1rem] sm:text-[2.4rem]">{object.namePlural}</h1>
               <p className="text-xs text-muted-foreground">
                 <code className="font-mono">{object.key}</code> · {object.isStandard ? t("crm.object.standard") : t("crm.object.custom")}
               </p>

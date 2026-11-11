@@ -37,11 +37,11 @@ export function PrintableInvoice({ invoiceId }: { invoiceId: string }) {
           </p>
         </div>
         <dl className="grid grid-cols-[auto_auto] gap-x-4 gap-y-0.5 text-right">
-          <dt className="text-neutral-500">{L("Išrašymo data", "Issue date")}</dt>
+          <dt className="text-muted-foreground">{L("Išrašymo data", "Issue date")}</dt>
           <dd>{inv.issueDate ?? "—"}</dd>
-          <dt className="text-neutral-500">{L("Apmokėti iki", "Due date")}</dt>
+          <dt className="text-muted-foreground">{L("Apmokėti iki", "Due date")}</dt>
           <dd className="font-semibold">{inv.dueDate ?? "—"}</dd>
-          <dt className="text-neutral-500">{L("Laikotarpis", "Period")}</dt>
+          <dt className="text-muted-foreground">{L("Laikotarpis", "Period")}</dt>
           <dd>
             {inv.periodFrom} – {inv.periodTo}
           </dd>
@@ -50,7 +50,7 @@ export function PrintableInvoice({ invoiceId }: { invoiceId: string }) {
 
       <section className="grid grid-cols-2 gap-8 py-5">
         <div>
-          <h2 className="mb-1 text-xs font-semibold tracking-wide text-neutral-500 uppercase">{L("Pardavėjas", "Seller")}</h2>
+          <h2 className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{L("Pardavėjas", "Seller")}</h2>
           <p className="font-semibold">{d.seller.name}</p>
           <p>{d.seller.address}</p>
           <p>
@@ -64,7 +64,7 @@ export function PrintableInvoice({ invoiceId }: { invoiceId: string }) {
           </p>
         </div>
         <div>
-          <h2 className="mb-1 text-xs font-semibold tracking-wide text-neutral-500 uppercase">{L("Pirkėjas", "Buyer")}</h2>
+          <h2 className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{L("Pirkėjas", "Buyer")}</h2>
           <p className="font-semibold">{d.client.name}</p>
           {d.client.address && <p>{d.client.address}</p>}
           {d.client.companyCode && (
@@ -82,7 +82,7 @@ export function PrintableInvoice({ invoiceId }: { invoiceId: string }) {
 
       <table className="w-full border-collapse">
         <thead>
-          <tr className="border-y bg-neutral-50 text-left text-xs">
+          <tr className="border-y bg-muted text-left text-xs">
             <th className="py-2 pr-2">{L("Paslauga", "Service")}</th>
             <th className="py-2 pr-2">{L("Projektas", "Project")}</th>
             <th className="py-2 pr-2 text-right">{L("Kiekis, val.", "Qty, h")}</th>
@@ -95,7 +95,7 @@ export function PrintableInvoice({ invoiceId }: { invoiceId: string }) {
             <tr key={i} className="border-b">
               <td className="py-1.5 pr-2">
                 {L("Darbuotojų nuoma", "Staff leasing")}: {bi ? l.tradeNameEn : l.tradeNameLt}
-                <span className="text-neutral-500">
+                <span className="text-muted-foreground">
                   {" "}
                   – {L(...rate[l.rateType]!)}
                   {l.multiplierPct !== 100 ? ` (${l.multiplierPct}%)` : ""}
@@ -120,8 +120,8 @@ export function PrintableInvoice({ invoiceId }: { invoiceId: string }) {
         <span className="border-t pt-1 font-bold">{L("Iš viso", "Total")}</span>
         <span className="border-t pt-1 text-right font-bold tabular-nums">{money(inv.totalCents, inv.currency)}</span>
       </div>
-      {d.vatRatePct === 0 && <p className="mt-4 text-xs text-neutral-600">{L("PVM neskaičiuojamas: atvirkštinis apmokestinimas (PVM direktyvos 196 str.).", "VAT reverse charge (Article 196, Council Directive 2006/112/EC).")}</p>}
-      <p className="mt-8 text-xs text-neutral-500">{t("invoicing.printNote" as MessageKey)}</p>
+      {d.vatRatePct === 0 && <p className="mt-4 text-xs text-muted-foreground">{L("PVM neskaičiuojamas: atvirkštinis apmokestinimas (PVM direktyvos 196 str.).", "VAT reverse charge (Article 196, Council Directive 2006/112/EC).")}</p>}
+      <p className="mt-8 text-xs text-muted-foreground">{t("invoicing.printNote" as MessageKey)}</p>
     </div>
   )
 }

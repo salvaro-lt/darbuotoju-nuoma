@@ -155,7 +155,7 @@ export function SubcontractorTables({ data, print }: { data: SubcontractorTimesh
                 <TableRow key={`${r.workerId}-${r.date}-${i}`}>
                   <TableCell className={`px-4 ${cell}`}>{r.workerName}</TableCell>
                   <TableCell className={`whitespace-nowrap tabular-nums ${cell} ${r.weekend ? "font-medium" : ""}`}>
-                    <span className="capitalize text-muted-foreground">{d.weekday(r.date)}</span> {d.full(r.date)} {r.night && <Moon className="inline size-3 text-indigo-500" />}
+                    <span className="capitalize text-muted-foreground">{d.weekday(r.date)}</span> {d.full(r.date)} {r.night && <Moon className="inline size-3 text-foreground" />}
                   </TableCell>
                   <TableCell className={`font-mono text-xs ${cell}`}>{r.projectCode}</TableCell>
                   <TableCell className={cell}>{r.trade}</TableCell>
@@ -202,7 +202,7 @@ export function SubcontractorPrint() {
         <p className="text-sm">
           {data.subcontractor.name} ({data.subcontractor.code}) · {d.full(data.from)} – {d.full(data.to)}
         </p>
-        <p className="text-xs text-neutral-600">{t("timesheets.sub.onlyApproved")}</p>
+        <p className="text-xs text-muted-foreground">{t("timesheets.sub.onlyApproved")}</p>
       </header>
       <SubcontractorTables data={data} print />
       <footer className="mt-10 grid grid-cols-2 gap-10 text-sm">

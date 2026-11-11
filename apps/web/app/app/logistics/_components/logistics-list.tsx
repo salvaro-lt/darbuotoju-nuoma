@@ -61,7 +61,7 @@ export function LogisticsList() {
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className={`text-right tabular-nums ${p.peopleToday > p.bedsToday ? "font-semibold text-red-700 dark:text-red-400" : ""}`}>
+                  <TableCell className={`text-right tabular-nums ${p.peopleToday > p.bedsToday ? "font-semibold text-destructive dark:text-destructive" : ""}`}>
                     {p.peopleToday} / {p.bedsToday}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{p.vehicles}</TableCell>
@@ -71,7 +71,7 @@ export function LogisticsList() {
                       <CountPill n={p.warnings} tone="warning" label={t("logistics.warningsShort")} />
                       {p.errors + p.warnings === 0 && (
                         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <CheckCircle2 className="size-3.5 text-emerald-600" />
+                          <CheckCircle2 className="size-3.5 text-steel-green" />
                           {t("logistics.noWarnings")}
                         </span>
                       )}

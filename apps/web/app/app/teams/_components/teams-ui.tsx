@@ -15,7 +15,7 @@ export function RequestStatusBadge({ status }: { status: RequestStatus }) {
 export function TeamCount({ picked, needed }: { picked: number; needed: number }) {
   const full = picked >= needed
   return (
-    <span className={`tabular-nums font-medium ${full ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
+    <span className={`tabular-nums font-medium ${full ? "text-steel-green dark:text-steel-green" : "text-marking-foreground dark:text-marking dark:text-marking"}`}>
       {picked} / {needed}
     </span>
   )
@@ -30,12 +30,12 @@ export function WarningBadge({ w, certificateNames }: { w: MatchWarning; certifi
   const cert = w.certificateTypeId ? certificateNames[w.certificateTypeId] : null
   const text = `${t(`teams.warn.${w.code}` as MessageKey)}${cert ? `: ${cert}` : ""}${w.date ? ` (${w.date})` : ""}`
   const tone = SEVERE.has(w.code)
-    ? "border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300"
+    ? "border-destructive/60 bg-destructive/15 text-destructive dark:border-destructive/60 dark:bg-destructive/20 dark:text-destructive"
     : MILD.has(w.code)
       ? "text-muted-foreground"
-      : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300"
+      : "border-marking-foreground/50 bg-marking/15 text-marking-foreground dark:text-marking dark:border-marking-foreground/50 dark:bg-marking/20 dark:text-marking"
   return (
-    <Badge variant="outline" className={`font-normal ${tone}`}>
+    <Badge variant="outline" className={`h-auto font-normal whitespace-normal ${tone}`}>
       {text}
     </Badge>
   )

@@ -58,9 +58,9 @@ export function ComplianceTabs() {
 }
 
 const READINESS_STYLE: Record<Readiness, { variant: "secondary" | "outline" | "destructive"; dot: string }> = {
-  ready: { variant: "secondary", dot: "bg-emerald-500" },
-  warning: { variant: "outline", dot: "bg-amber-400" },
-  blocked: { variant: "destructive", dot: "bg-red-600" },
+  ready: { variant: "secondary", dot: "bg-steel-green/80" },
+  warning: { variant: "outline", dot: "bg-marking" },
+  blocked: { variant: "destructive", dot: "bg-destructive/80" },
 }
 
 export function ReadinessBadge({ readiness }: { readiness: Readiness }) {

@@ -233,7 +233,7 @@ function ImportDialog({ projectId, onClose }: { projectId: string; onClose: () =
                 <FieldLabel htmlFor="ts-file">{t("timesheets.import.file")}</FieldLabel>
                 <Input id="ts-file" type="file" accept=".csv,.txt,.xlsx,.pdf,image/png,image/jpeg,image/webp" onChange={(e) => void choose(e.target.files?.[0] ?? null)} />
                 {reading && <p className="text-sm text-muted-foreground">{t("timesheets.import.reading")}</p>}
-                {prepared && !viaAi && !tableWithoutRows && <p className="text-sm text-emerald-700 dark:text-emerald-400">{fmt(t("timesheets.import.preview"), { n: prepared.rows.length })}</p>}
+                {prepared && !viaAi && !tableWithoutRows && <p className="text-sm text-steel-green dark:text-steel-green">{fmt(t("timesheets.import.preview"), { n: prepared.rows.length })}</p>}
                 {(failed || tableWithoutRows) && <p className="text-sm text-destructive">{t("timesheets.import.noRows")}</p>}
                 {viaAi && <p className="text-sm text-muted-foreground">{t("timesheets.import.viaAi")}</p>}
               </Field>

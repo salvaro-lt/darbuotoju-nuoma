@@ -9,8 +9,11 @@ export type StatusTone = "positive" | "neutral" | "ended" | "failed"
 
 const VARIANT = { positive: "default", neutral: "secondary", ended: "outline", failed: "destructive" } as const
 
+// Positive is steel-green (a primed, passed plate), never the red-oxide action colour.
+const CLASS: Partial<Record<StatusTone, string>> = { positive: "border-transparent bg-steel-green/15 text-foreground" }
+
 export function StatusBadge({ tone, children }: { tone: StatusTone; children: React.ReactNode }) {
-  return <Badge variant={VARIANT[tone]}>{children}</Badge>
+  return <Badge variant={VARIANT[tone]} className={CLASS[tone]}>{children}</Badge>
 }
 
 export const TONE: Record<string, StatusTone> = {
