@@ -9,6 +9,7 @@ import { isBlockingAssignment, OPEN_PROJECT_STATUSES, rangesOverlap, type TradeL
 import { actorArgs, actorId, checkRange, cleanCountry, cleanDate, cleanText, fail, LANGUAGE, opts, readerOf, writerOf, type DataModelOf, type ProjectId, type WorkerId } from "../shared"
 import type { staffingTables } from "../tables"
 import { describeGap, type DraftInput, type DraftStatus, type RankedCandidate, type RequestStatus, type TeamGap, type TeamPick } from "./matching"
+import { describeRuleWarning, type RuleWarning, type TeamRules } from "../planning/rules"
 import { StaffingTeamsPermissions as P } from "./manifest"
 import { buildProposal } from "./operations"
 import { defineTeamsSeed } from "./seed"
@@ -67,6 +68,12 @@ export interface ProposalView {
   certificateNames: Record<string, string>
   /** For the local answer-to-client template (`clientDraftText`). */
   draftInput: DraftInput
+  /** The client's team composition rules (planning area) and what the shown team breaks. */
+  rules: TeamRules & { stored: boolean }
+  ruleWarnings: RuleWarning[]
+  ruleText: { lt: string[]; en: string[] }
+  /** Swaps the engine made to keep the rules (empty once the planner edits the team). */
+  ruleSwaps: { lineIndex: number; out: string; in: string; reason: "drivers" | "english" | "language" }[]
 }
 
 const MAX_LINES = 12
@@ -158,7 +165,20 @@ export function defineTeams(system: ConvexSystem, options: TeamsOptions = {}) {
       })),
       openPositions: p.gaps.filter((g) => g.kind === "people").map((g) => describeGap(g, { trade: tradeOf("en"), certificate: certOf("en") }, "en")),
     }
-    return { lines: p.ranked.map((ranked) => ({ ranked })), selection: p.selection, edited: p.edited, gaps: p.gaps, gapText, workerNames: p.workerNames, certificateNames, draftInput }
+    return {
+      lines: p.ranked.map((ranked) => ({ ranked })),
+      selection: p.selection,
+      edited: p.edited,
+      gaps: p.gaps,
+      gapText,
+      workerNames: p.workerNames,
+      certificateNames,
+      draftInput,
+      rules: p.rules,
+      ruleWarnings: p.ruleWarnings,
+      ruleText: { lt: p.ruleWarnings.map((w) => describeRuleWarning(w, "lt")), en: p.ruleWarnings.map((w) => describeRuleWarning(w, "en")) },
+      ruleSwaps: p.ruleSwaps,
+    }
   }
 
   async function loadRequest(ctx: { db: unknown }, id: RequestId, op: string): Promise<RequestDoc> {

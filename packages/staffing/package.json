@@ -21,7 +21,8 @@
     "./compliance/manifest": "./src/compliance/manifest.ts",
     "./compliance/pure": "./src/compliance/pure.ts",
     "./invoicing/manifest": "./src/invoicing/manifest.ts",
-    "./invoicing/pure": "./src/invoicing/pure.ts"
+    "./invoicing/pure": "./src/invoicing/pure.ts",
+    "./planning/manifest": "./src/planning/manifest.ts", "./planning/pure": "./src/planning/pure.ts", "./planning/rules": "./src/planning/rules.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

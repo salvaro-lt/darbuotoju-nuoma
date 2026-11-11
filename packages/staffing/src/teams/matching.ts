@@ -34,6 +34,12 @@ export interface Candidate {
   certificates: Readonly<Record<string, string | null>>
   /** Earlier (not cancelled) assignments on this client's projects. */
   previousClientAssignments: number
+  /** Last day worked for this client (planning history). */
+  lastClientWork?: string | null | undefined
+  /** ISO 3166-1 alpha-2 (team composition rules). */
+  nationality?: string | undefined
+  /** The planner's verdict for this client: `unsuitable` keeps the worker out of the team. */
+  clientFeedback?: { verdict: "suitable" | "unsuitable"; comment: string } | null | undefined
 }
 
 export interface MatchContext {
@@ -55,15 +61,19 @@ export type WarningCode =
   | "sizes_unknown"
   | "subcontractor"
   | "no_common_language"
+  /** The planner marked the worker unsuitable for this client (planning feedback). */
+  | "client_unsuitable"
 
 export interface MatchWarning {
   code: WarningCode
   certificateTypeId?: string
   date?: string
+  /** The planner's comment (`client_unsuitable`). */
+  note?: string
 }
 
 /** Warnings that make a candidate unfit for the line (not proposed automatically). */
-export const BLOCKING_WARNINGS: readonly WarningCode[] = ["cert_missing", "cert_expired", "level_below"]
+export const BLOCKING_WARNINGS: readonly WarningCode[] = ["cert_missing", "cert_expired", "level_below", "client_unsuitable"]
 
 export interface RankedCandidate {
   workerId: string
@@ -74,7 +84,12 @@ export interface RankedCandidate {
   eligible: boolean
   canDrive: boolean
   previousClientAssignments: number
+  lastClientWork: string | null
+  /** The planner's verdict for this client, if any. */
+  clientFeedback: "suitable" | "unsuitable" | null
   languageMatch: string[]
+  languages: string[]
+  nationality: string | null
   source: "own" | "subcontractor"
   warnings: MatchWarning[]
 }
@@ -116,12 +131,14 @@ export function rankCandidate(line: TeamLine, c: Candidate, ctx: MatchContext): 
   if (c.source === "subcontractor") warnings.push({ code: "subcontractor" })
   const languageMatch = ctx.languages.filter((l) => c.languages.includes(l))
   if (ctx.languages.length > 0 && languageMatch.length === 0) warnings.push({ code: "no_common_language" })
+  if (c.clientFeedback?.verdict === "unsuitable") warnings.push({ code: "client_unsuitable", ...(c.clientFeedback.comment ? { note: c.clientFeedback.comment } : {}) })
 
   let score = LEVEL_SCORE[trade.level]
   score += Math.min(c.previousClientAssignments, 3) * 8
   score += languageMatch.length * 6
   if (c.source === "own") score += 5
   if (line.drivers > 0 && canDrive) score += 8
+  if (c.clientFeedback?.verdict === "suitable") score += 6
   for (const w of warnings) score -= PENALTY[w.code] ?? 0
 
   return {
@@ -132,7 +149,11 @@ export function rankCandidate(line: TeamLine, c: Candidate, ctx: MatchContext): 
     eligible: !warnings.some((w) => BLOCKING_WARNINGS.includes(w.code)),
     canDrive,
     previousClientAssignments: c.previousClientAssignments,
+    lastClientWork: c.lastClientWork ?? null,
+    clientFeedback: c.clientFeedback?.verdict ?? null,
     languageMatch,
+    languages: [...c.languages],
+    nationality: c.nationality ?? null,
     source: c.source,
     warnings,
   }
@@ -190,6 +211,8 @@ export type TeamGap =
   /** A picked worker is no longer free for the whole period (or left the company). */
   | { kind: "busy"; lineIndex: number; workerId: string; name: string }
   | { kind: "sizes"; workerIds: string[]; names: string[] }
+  /** Declared subcontractor capacity for a trade that still misses people (planning area). */
+  | { kind: "subcontractor_capacity"; lineIndex: number; tradeId: string; missing: number; offers: { name: string; count: number }[] }
 
 /** What the team still lacks for the request: the "Ko trūksta" list. */
 export function teamGaps(lines: readonly TeamLine[], picks: readonly TeamPick[], ranked: readonly (readonly RankedCandidate[])[], names: Readonly<Record<string, string>> = {}): TeamGap[] {
@@ -259,6 +282,10 @@ export function describeGap(g: TeamGap, n: Names, locale: TeamsLocale = "lt"): s
       return lt ? `${g.name}: nebėra laisvas visam laikotarpiui` : `${g.name}: no longer free for the whole period`
     case "sizes":
       return lt ? `Nežinomi aprangos dydžiai: ${g.names.join(", ")}` : `Clothing sizes unknown: ${g.names.join(", ")}`
+    case "subcontractor_capacity": {
+      const offers = g.offers.map((o) => `${o.name} – ${o.count}`).join("; ")
+      return lt ? `${n.trade(g.tradeId)}: subrangovų pajėgumai (${offers})` : `${n.trade(g.tradeId)}: subcontractor capacity (${offers})`
+    }
   }
 }
 
