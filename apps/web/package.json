@@ -18,6 +18,7 @@
     "core:npm": "node scripts/core-source.mjs npm",
     "deploy:convex": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/deploy-convex.ts",
     "ci:secrets": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/ci-secrets.ts",
+    "n8n:setup": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/n8n-setup.ts",
     "build:start": "esbuild scripts/start.mjs --bundle --platform=node --format=esm --target=node22 --external:./server.js --outfile=.next/standalone/apps/web/start.mjs"
   },
   "dependencies": {

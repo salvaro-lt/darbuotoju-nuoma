@@ -4,7 +4,11 @@
 //
 // A module exposes its actions to the assistant with `defineAiTool` (permission =
 // the module's own permission, writes require approval). Add its tools here.
-import { defineAiAgent, displayTools, type AiOptions } from "@digimuza/system-core/ai"
+import { defineAiAgent, displayTools, type AiAgentDefinition, type AiOptions } from "@digimuza/system-core/ai"
+import { getConvexEnv } from "../env"
+import { mailTools } from "./mailTools"
+import { N8N_NAME_PREFIX, N8N_TAG } from "./model/n8nClient"
+import { n8nTools } from "./n8nAiTools"
 import { defineAutomationsAiTools } from "@digimuza/system-core/automations"
 import { defineIngestAiTools } from "@digimuza/system-core/ingest"
 import { financeTools } from "@digimuza/system-core/finance"
@@ -50,6 +54,27 @@ export const assistant = defineAiAgent({
   tools: [...financeTools, ...documentsTools, ...staffingTools, ...automationTools, ...ingestTools, ...displayTools],
 })
 
+/** The app's public URL for n8n nodes that call back. Module scope: a missing or invalid env must not break loading, so a placeholder then. */
+const siteUrl = (() => {
+  try {
+    return getConvexEnv().SITE_URL.replace(/\/+$/, "")
+  } catch {
+    return "<SITE_URL>"
+  }
+})()
+
+/** n8n: the automation engine. How the assistant finds, builds and runs workflows (convex/n8nAiTools.ts). */
+export const N8N_INSTRUCTIONS = [
+  `n8n workflow (automatizacijos n8n): matai ir keiti tik workflow su žyma ${N8N_TAG}. Esamus workflow rask su n8n.search_workflows, detales (mazgai, ryšiai, trigeriai) – n8n.get_workflow, vykdymus – n8n.list_executions.`,
+  `Kurdamas workflow: pirmiausia n8n.list_node_types (tipai, typeVersion, parametrų pavyzdžiai). Trigeris – Webhook (n8n-nodes-base.webhook) arba Schedule Trigger. AI mazgams naudok OpenAI Chat Model su credentials {openAiApi: {name: "${N8N_NAME_PREFIX}9Router"}}, modelis "fast", responsesApiEnabled false. Sistemos duomenims: MCP Client Tool (endpointUrl ${siteUrl}/api/v1/mcp, serverTransport httpStreamable, authentication bearerAuth) arba HTTP Request POST ${siteUrl}/api/v1/tools/<įrankio id>, abu su credentials {httpBearerAuth: {name: "${N8N_NAME_PREFIX}API"}}.`,
+  "connections perduok JSON eilute (string). Prieš n8n.create_workflow ar n8n.update_workflow trumpai aprašyk workflow (trigeris → žingsniai → rezultatas) ir iškviesk įrankį: naudotojas patvirtina kortelėje. Po patvirtinimo iškviesk n8n.get_operation su grąžintu opId ir pasakyk rezultatą (pavadinimas, ar aktyvus, nuoroda). Tas pats n8n.set_workflow_active ir n8n.execute_workflow.",
+  `Laiškų workflow: Webhook trigeris (POST, header auth credentials "${N8N_NAME_PREFIX}Webhook"), tada pašto dėžutę prijunk prie jo per ingest.create_inbox su links [{to: "n8n", id: <workflowId>}]. Kiekvienas gautas laiškas POST'inamas į workflow kaip JSON {event: "email.received", deliveryId, email: {id, inbox, from, fromName, to, subject, text, html, messageId, receivedAt, attachments}} su antrašte X-Webhook-Secret. Atsakyti į gautą laišką: mail.reply_to_email {emailId, text}.`,
+].join(" ")
+
+/** Every agent also works with n8n workflows and answers received email (convex/n8nAiTools.ts, convex/mailTools.ts). */
+const withN8n = <const A extends AiAgentDefinition>(agent: A) =>
+  defineAiAgent({ ...agent, instructions: `${agent.instructions}\n${N8N_INSTRUCTIONS}`, tools: [...agent.tools, ...mailTools, ...n8nTools] })
+
 /** Same instructions and tools as the assistant, on the 9Router combo `smart`. */
 export const detailedAssistant = defineAiAgent({
   ...assistant,
@@ -60,7 +85,7 @@ export const detailedAssistant = defineAiAgent({
 })
 
 export const aiOptions: AiOptions = {
-  agents: [assistant, detailedAssistant],
+  agents: [withN8n(assistant), withN8n(detailedAssistant)],
   // 9Router combos (OPENAI_BASE_URL=https://router.digimuza.ai/v1): `fast` and
   // `smart` are model lists set in the router dashboard, so a model upgrade is a
   // dashboard change, not a deploy. Each must exist on the router.

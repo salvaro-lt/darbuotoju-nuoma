@@ -22,6 +22,22 @@ import { cn } from "@/lib/utils"
 import { convexApi as api, dateTime, relativeTime } from "./shared"
 
 const RUN_STATUSES = new Set(["queued", "extracted", "pending_review", "inserted", "rejected", "failed"])
+const KNOWN_STATUSES = new Set(["sent", "failed", "pending", "stored"])
+
+/** An automation run's status (built-in Automations). */
+const runStatusOf = (d: DeliveryView) => (d.consumer === "automations" && d.status && RUN_STATUSES.has(d.status) ? (d.status as AutomationRunStatus) : null)
+
+/** Another consumer's live status of its delivery (e.g. an n8n workflow delivery): known ones translated, others shown as given. */
+function DeliveryStatusBadge({ status }: { status: string }) {
+  const { t } = useT()
+  return <Badge variant={status === "failed" ? "destructive" : "secondary"}>{KNOWN_STATUSES.has(status) ? t(`ingest.delivery.status.${status}` as MessageKey) : status}</Badge>
+}
+
+function StatusBadge({ d }: { d: DeliveryView }) {
+  const run = runStatusOf(d)
+  if (run) return <RunStatusBadge status={run} />
+  return d.status ? <DeliveryStatusBadge status={d.status} /> : null
+}
 
 export function EmailList({ inboxId, showInbox = false }: { inboxId?: string; showInbox?: boolean }) {
   const { t, locale } = useT()
@@ -90,7 +106,14 @@ function Deliveries({ deliveries, compact = false }: { deliveries: DeliveryView[
       {deliveries.map((d) =>
         compact ? (
           <span key={`${d.consumer}:${d.refId}`} className="inline-flex items-center gap-1">
-            {d.status && RUN_STATUSES.has(d.status) ? <RunStatusBadge status={d.status as AutomationRunStatus} /> : <Badge variant="outline">{t(`ingest.outcome.${d.outcome}` as MessageKey)}</Badge>}
+            {runStatusOf(d) ? (
+              <StatusBadge d={d} />
+            ) : (
+              <>
+                <Badge variant="outline">{t(`ingest.outcome.${d.outcome}` as MessageKey)}</Badge>
+                <StatusBadge d={d} />
+              </>
+            )}
           </span>
         ) : (
           <span key={`${d.consumer}:${d.refId}`} className="flex flex-wrap items-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm">
@@ -102,7 +125,7 @@ function Deliveries({ deliveries, compact = false }: { deliveries: DeliveryView[
               <span className="min-w-0 flex-1 truncate font-medium">{d.name}</span>
             )}
             <Badge variant="outline">{t(`ingest.outcome.${d.outcome}` as MessageKey)}</Badge>
-            {d.status && RUN_STATUSES.has(d.status) && <RunStatusBadge status={d.status as AutomationRunStatus} />}
+            <StatusBadge d={d} />
           </span>
         ),
       )}

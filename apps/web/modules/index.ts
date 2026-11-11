@@ -9,6 +9,7 @@ import { ai, AiPermissions } from "@digimuza/system-core/ai"
 import { automations, AutomationsPermissions } from "@digimuza/system-core/automations"
 import { finance, FinancePermissions } from "@digimuza/system-core/finance"
 import { ingest, IngestPermissions } from "@digimuza/system-core/ingest"
+import { n8n, N8nPermissions, N8nSubroles, type N8nPermission } from "./n8n"
 import { staffing, StaffingPermissions } from "@digimuza/staffing/manifest"
 import { mcp, McpPermissions } from "@digimuza/system-core/mcp"
 
@@ -24,7 +25,10 @@ export const appModules = [
   automations,
   ingest,
   documents,
+  // `n8n` (modules/n8n.ts): email → n8n webhook workflows, assistant tools for n8n workflows.
+  n8n,
   staffing,
   // staffing areas: one line each below (teams, timesheets, invoicing, logistics, compliance)
 ]
+export { n8n, N8nPermissions, N8nSubroles, type N8nPermission }
 export { staffing, StaffingPermissions, ai, AiPermissions, automations, AutomationsPermissions, crm, CrmPermissions, documents, DocumentsPermissions, finance, FinancePermissions, ingest, IngestPermissions, mcp, McpPermissions }

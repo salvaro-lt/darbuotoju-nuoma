@@ -96,6 +96,19 @@ export const convexEnvSchema = z.object({
   INGEST_RECEIVING_DOMAIN: z.string().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/i, "a domain like in.acme.lt").optional(),
   /** Gavimas: sender of the setup's test email (default `no-reply@<verified Resend domain>`). */
   INGEST_TEST_FROM: z.string().min(3).optional(),
+  /** n8n base URL, e.g. `https://n8n.digimuza.ai`. Without it (or the key) the n8n module is not configured. */
+  N8N_URL: z.url().optional(),
+  /** n8n public API key (Settings → n8n API), sent as `X-N8N-API-KEY`: create, update, activate workflows. */
+  N8N_API_KEY: z.string().min(1).optional(),
+  /** n8n instance MCP endpoint, e.g. `https://n8n.digimuza.ai/mcp-server/http`: workflow details and runs. */
+  N8N_MCP_URL: z.url().optional(),
+  /** Bearer token of the n8n instance MCP server (Settings → MCP access). */
+  N8N_MCP_TOKEN: z.string().min(1).optional(),
+  /**
+   * Shared secret for every app → n8n webhook: the `X-Webhook-Secret` header (mail workflows of
+   * n8n/deploy.py, email → n8n deliveries) and the HMAC key of `X-Webhook-Signature`.
+   */
+  N8N_WEBHOOK_SECRET: z.string().min(1).optional(),
 })
 
 /** Keys `pnpm predeploy` copies from Infisical into the Convex deployment. */

@@ -5,6 +5,7 @@
 import { documentsIngestConsumer } from "@digimuza/documents/email"
 import { automationsIngestConsumer, type AutomationsOptions, type AutomationTarget } from "@digimuza/system-core/automations"
 import { financeCreateInvoiceTool } from "@digimuza/system-core/finance"
+import { n8nIngestConsumer } from "./model/n8nConsumer"
 
 export const automationTargets: AutomationTarget[] = [financeCreateInvoiceTool]
 
@@ -17,7 +18,8 @@ export const automationsOptions: AutomationsOptions = {
 
 /**
  * Gavimas (ingest) hands received mail to the email automations that read each inbox,
- * and to the documents archive, which files every email (and its attachments) by
- * default; Dokumentai → Žymos switches it off per inbox.
+ * to the n8n webhook workflows linked to it (convex/n8n.ts `_forward`), and to the
+ * documents archive, which files every email (and its attachments) by default;
+ * Dokumentai → Žymos switches it off per inbox.
  */
-export const ingestConsumers = [automationsIngestConsumer(automationsOptions), documentsIngestConsumer()]
+export const ingestConsumers = [automationsIngestConsumer(automationsOptions), n8nIngestConsumer(), documentsIngestConsumer()]

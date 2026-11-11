@@ -1,5 +1,7 @@
 import { crmTables } from "@digimuza/crm"
 import { documentsTables } from "@digimuza/documents"
+import { mailTables } from "./model/mailTables"
+import { n8nTables } from "./model/n8nTables"
 import { staffingTables } from "@digimuza/staffing/tables"
 import { aiTables } from "@digimuza/system-core/ai"
 import { automationsTables } from "@digimuza/system-core/automations"
@@ -30,6 +32,10 @@ export default defineSchema({
   ...documentsTables,
   // Gavimas (ingest): Resend setup, inboxes, webhook events, received emails (convex/ingest.ts).
   ...ingestTables,
+  // n8n (modules/n8n.ts): workflow cache, inbox links, email deliveries, ops outbox (convex/n8n.ts).
+  ...n8nTables,
+  // Email replies (mail.reply_to_email): outbox drained by replies:_drain (convex/replies.ts).
+  ...mailTables,
   // Staffing base (packages/staffing): trades, certificate types, workers, certificates, clients, projects, assignments (convex/staffing.ts).
   ...staffingTables,
   // Staffing areas: one line each below (...timesheetsTables, ...).

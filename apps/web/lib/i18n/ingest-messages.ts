@@ -200,6 +200,10 @@ export const ingestLt = {
   "ingest.outcome.ignored": "Netiko filtrai",
   "ingest.outcome.skipped": "Automatizacija išjungta",
   "ingest.outcome.duplicate": "Jau apdorota",
+  "ingest.delivery.status.sent": "Išsiųsta",
+  "ingest.delivery.status.failed": "Nepavyko",
+  "ingest.delivery.status.pending": "Laukiama",
+  "ingest.delivery.status.stored": "Išsaugota",
 
   // Automation builder
   "ingest.picker.label": "Pašto dėžutė",
@@ -406,6 +410,10 @@ export const ingestEn: Record<keyof typeof ingestLt, string> = {
   "ingest.outcome.ignored": "Did not match the filters",
   "ingest.outcome.skipped": "Automation off",
   "ingest.outcome.duplicate": "Already handled",
+  "ingest.delivery.status.sent": "Sent",
+  "ingest.delivery.status.failed": "Failed",
+  "ingest.delivery.status.pending": "Pending",
+  "ingest.delivery.status.stored": "Stored",
 
   "ingest.picker.label": "Inbox",
   "ingest.picker.placeholder": "Choose an inbox",

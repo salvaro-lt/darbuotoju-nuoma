@@ -145,6 +145,17 @@ describe("AI assistant", () => {
       ["ingest.list_inboxes", false],
       ["ingest.create_inbox", true],
       ["ai.show_card", false],
+      // withN8n (convex/aiConfig.ts): email replies and n8n workflows, after the agent's own tools.
+      ["mail.reply_to_email", true],
+      ["n8n.search_workflows", false],
+      ["n8n.get_workflow", false],
+      ["n8n.list_executions", false],
+      ["n8n.list_node_types", false],
+      ["n8n.get_operation", false],
+      ["n8n.create_workflow", true],
+      ["n8n.update_workflow", true],
+      ["n8n.set_workflow_active", true],
+      ["n8n.execute_workflow", true],
     ])
   })
 
