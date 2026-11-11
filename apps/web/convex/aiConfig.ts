@@ -50,10 +50,21 @@ export const assistant = defineAiAgent({
   tools: [...financeTools, ...documentsTools, ...staffingTools, ...automationTools, ...ingestTools, ...displayTools],
 })
 
+/** Same instructions and tools as the assistant, on the 9Router combo `smart`. */
+export const detailedAssistant = defineAiAgent({
+  ...assistant,
+  id: "detailed",
+  name: "Išsamus",
+  description: "Galingesnis modelis sudėtingesnėms užduotims ir analizei (lėtesnis, brangesnis) / Stronger model for complex tasks",
+  model: "smart",
+})
+
 export const aiOptions: AiOptions = {
-  agents: [assistant],
-  // Small, fast model with tool calling and streaming on the 9Router proxy
-  // (OPENAI_BASE_URL=https://router.digimuza.ai/v1). It must exist on the router.
-  // AI_MODEL on the Convex deployment overrides it (alternative: `cx/gpt-6.1-sol`).
-  defaultModel: "cc/claude-haiku-4-5-20251001",
+  agents: [assistant, detailedAssistant],
+  // 9Router combos (OPENAI_BASE_URL=https://router.digimuza.ai/v1): `fast` and
+  // `smart` are model lists set in the router dashboard, so a model upgrade is a
+  // dashboard change, not a deploy. Each must exist on the router.
+  // AI_MODEL on the Convex deployment overrides `fast` for agents without their
+  // own `model` (the "Išsamus" agent keeps `smart`).
+  defaultModel: "fast",
 }

@@ -97,5 +97,5 @@ export const {
       return null
     }
   },
-  aiModel: "cc/claude-haiku-4-5-20251001",
+  aiModel: "fast",
 })

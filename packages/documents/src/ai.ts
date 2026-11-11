@@ -26,7 +26,8 @@ async function chat(cfg: AiConfig, messages: Message[], json: boolean): Promise<
     const res = await (cfg.fetch ?? globalThis.fetch)(`${base}/chat/completions`, {
       method: "POST",
       headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: cfg.model, messages, temperature: 0, ...(json ? { response_format: { type: "json_object" } } : {}) }),
+      // `stream: false` explicitly: 9Router streams when the field is missing.
+      body: JSON.stringify({ model: cfg.model, messages, temperature: 0, stream: false, ...(json ? { response_format: { type: "json_object" } } : {}) }),
       signal: controller.signal,
     })
     if (!res.ok) return { ok: false, code: "AI_FAILED", message: `model_http_${res.status}` }

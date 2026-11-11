@@ -67,7 +67,10 @@ describe("AI assistant", () => {
 
     await enable(superUser, "ai")
     const agents = await alice.query(api.ai.listAgents, {})
-    expect(agents.map((a) => ({ id: a.id, name: a.name }))).toEqual([{ id: "assistant", name: "Asistentas" }])
+    expect(agents.map((a) => ({ id: a.id, name: a.name }))).toEqual([
+      { id: "assistant", name: "Asistentas" },
+      { id: "detailed", name: "Išsamus" },
+    ])
   })
 
   test("an ai:user creates a thread and sends a message: run queued, thread running, runner scheduled", async () => {
@@ -89,7 +92,7 @@ describe("AI assistant", () => {
     expect(messages[0]!.id).toBe(messageId)
 
     const run = await t.run((ctx) => ctx.db.get(runId))
-    expect(run).toMatchObject({ status: "queued", agentId: "assistant", model: "cc/claude-haiku-4-5-20251001" })
+    expect(run).toMatchObject({ status: "queued", agentId: "assistant", model: "fast" })
     const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect())
     expect(scheduled.filter((s) => s.name === "aiRunner:runAgent")).toHaveLength(1)
     expect(await alice.query(api.ai.listThreads, {})).toMatchObject({ items: [{ id: threadId }] })

@@ -10,8 +10,9 @@ export const automationTargets: AutomationTarget[] = [financeCreateInvoiceTool]
 
 export const automationsOptions: AutomationsOptions = {
   targets: automationTargets,
-  // Same small model as the assistant; AUTOMATIONS_AI_MODEL or AI_MODEL on Convex override it.
-  defaultModel: "cc/claude-haiku-4-5-20251001",
+  // 9Router combo `fast` (the model behind it is set in the router dashboard);
+  // AUTOMATIONS_AI_MODEL or AI_MODEL on Convex override it.
+  defaultModel: "fast",
 }
 
 /**

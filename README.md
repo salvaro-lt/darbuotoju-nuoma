@@ -202,7 +202,7 @@ queries. Details: `INTEGRATION.md` → "AI assistant" in system-core. The model 
   UI: `app/app/ai/`, `components/ai/`.
 - **Enable it.** In Infisical `/` set `OPENAI_BASE_URL=https://router.digimuza.ai/v1`, `OPENAI_API_KEY` = the 9Router
   API key, and optionally `AI_MODEL` = a model name the router exposes (default in `convex/aiConfig.ts`:
-  `cc/claude-haiku-4-5-20251001`; alternative `cx/gpt-6.1-sol`). `pnpm deploy:convex` copies them to the Convex
+  `fast`, a 9Router combo; or any model name such as `cx/gpt-6.1-sol`; the "Išsamus" agent uses the combo `smart`). `pnpm deploy:convex` copies them to the Convex
   deployment, where the runner reads them (locally: `npx convex env set …`). Never put the key in git or `.env*`.
   Without a key the assistant answers "AI model is not configured". Then, as Super, enable the `ai` module.
 - **Give access.** Add the `ai:user` subrole (permission `ai:chat:use`) to a role. Each person sees only their own

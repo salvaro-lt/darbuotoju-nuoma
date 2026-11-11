@@ -4,5 +4,6 @@
 // deployment env; without the key every answer ends with "AI model is not configured".
 import { defineAiRunner } from "@digimuza/system-core/ai/runner"
 import { aiOptions } from "./aiConfig"
+import { withoutThinkingForFastModels } from "./model/aiFetch"
 
-export const { runAgent } = defineAiRunner(aiOptions)
+export const { runAgent } = defineAiRunner({ ...aiOptions, fetch: withoutThinkingForFastModels(globalThis.fetch) })
