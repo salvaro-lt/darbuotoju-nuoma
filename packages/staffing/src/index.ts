@@ -33,3 +33,7 @@ export * from "./logistics"
 export * from "./timesheets"
 export * from "./compliance"
 export * from "./invoicing"
+// Both timesheets and invoicing define these helpers (quarter-hour vs cent
+// rounding). The root exposes the timesheets ones; areas import their own
+// from "./pure" relatively.
+export { isWeekend, roundHours } from "./timesheets/pure"
