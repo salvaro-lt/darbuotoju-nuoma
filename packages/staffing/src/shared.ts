@@ -29,6 +29,8 @@ export type WorkerCertificateDoc = StaffingDoc<"staffing_workerCertificates">
 export type ClientDoc = StaffingDoc<"staffing_clients">
 export type ProjectDoc = StaffingDoc<"staffing_projects">
 export type AssignmentDoc = StaffingDoc<"staffing_assignments">
+export type AvailabilityId = GenericId<"staffing_workerAvailability">
+export type AvailabilityDoc = StaffingDoc<"staffing_workerAvailability">
 
 /**
  * Any Convex ctx with a database (query, mutation, or the AI tool context).

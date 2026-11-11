@@ -3,6 +3,7 @@
 // database and do NOT check permissions: the calling function guards first
 // (`system.requirePermission`), then calls these.
 import {
+  availabilityBlocks,
   BLOCKING_ASSIGNMENT_STATUSES,
   CERTIFICATE_STATUS_RANK,
   certificateStatus,
@@ -26,6 +27,7 @@ import {
   readerOf,
   type AssignmentDoc,
   type AssignmentId,
+  type AvailabilityDoc,
   type CertificateTypeDoc,
   type CertificateTypeId,
   type ClientDoc,
@@ -400,16 +402,53 @@ export async function busyWorkerIds(ctx: DbCtxLike, range: { from: string; to?: 
   return busy
 }
 
+/** Every availability period (rest, unavailable, available-from) that takes away a day of the period. */
+export async function blockingAvailability(ctx: DbCtxLike, range: { from: string; to?: string | undefined }): Promise<AvailabilityDoc[]> {
+  const db = readerOf(ctx)
+  const r = { startDate: range.from, endDate: range.to }
+  const out: AvailabilityDoc[] = []
+  for (const kind of ["rest", "unavailable"] as const) {
+    const rows = await db
+      .query("staffing_workerAvailability")
+      .withIndex("by_kind", (q) => (range.to ? q.eq("kind", kind).lte("startDate", range.to) : q.eq("kind", kind)))
+      .collect()
+    out.push(...rows.filter((p) => availabilityBlocks(p, r)))
+  }
+  out.push(
+    ...(await db
+      .query("staffing_workerAvailability")
+      .withIndex("by_kind", (q) => q.eq("kind", "available_from").gt("startDate", range.from))
+      .collect()),
+  )
+  return out
+}
+
+/** Worker IDs away (rest, unavailable) or not yet available on any day of the period. */
+export async function unavailableWorkerIds(ctx: DbCtxLike, range: { from: string; to?: string | undefined }): Promise<Set<string>> {
+  return new Set((await blockingAvailability(ctx, range)).map((p) => p.workerId))
+}
+
+/** A worker's availability periods, earliest first. */
+export async function workerAvailability(ctx: DbCtxLike, workerId: WorkerId): Promise<AvailabilityDoc[]> {
+  return readerOf(ctx)
+    .query("staffing_workerAvailability")
+    .withIndex("by_worker", (q) => q.eq("workerId", workerId))
+    .collect()
+}
+
 /**
  * Active workers free for the whole period: no confirmed or active assignment
- * overlapping it (proposed ones don't block), with one of the trades (at
- * `minLevel` or above), and, when `requireValidCertsOn` is set, usable
- * mandatory and required certificates on that day. Sorted by last name.
+ * overlapping it (proposed ones don't block), not away on rest / unavailable
+ * / not-yet-available on any day of it (`staffing_workerAvailability`), with
+ * one of the trades (at `minLevel` or above), and, when `requireValidCertsOn`
+ * is set, usable mandatory and required certificates on that day. Sorted by
+ * last name.
  */
 export async function listAvailableWorkers(ctx: DbCtxLike, query: AvailabilityQuery): Promise<AvailableWorker[]> {
   const db = readerOf(ctx)
   const catalog = await loadCatalog(ctx)
   const busy = await busyWorkerIds(ctx, query, query.ignoreAssignmentIds)
+  for (const id of await unavailableWorkerIds(ctx, query)) busy.add(id)
   const minRank = query.minLevel ? TRADE_LEVELS.indexOf(query.minLevel) : 0
   const wanted = new Set<string>(query.trades ?? [])
   const active = await db

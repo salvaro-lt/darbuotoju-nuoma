@@ -167,6 +167,33 @@ export function currentAndNext<A extends AssignmentLike>(assignments: readonly A
   return { current, next }
 }
 
+// ---------------------------------------------------------------- availability (rotation)
+
+/**
+ * Why a worker can't be planned for a while (`staffing_workerAvailability`):
+ * `rest` (home to rest, e.g. 2 weeks after a project), `unavailable` (sick,
+ * personal), `available_from` (not before `startDate`: new recruit, documents
+ * pending). `rest` / `unavailable` cover `[startDate, endDate]` (no end = until
+ * further notice); `available_from` covers every day before `startDate`.
+ */
+export const AVAILABILITY_KINDS = ["rest", "unavailable", "available_from"] as const
+export type AvailabilityKind = (typeof AVAILABILITY_KINDS)[number]
+
+export interface AvailabilityLike {
+  kind: AvailabilityKind
+  startDate: string
+  endDate?: string | null | undefined
+}
+
+/** The availability period takes away at least one day of `range`. */
+export function availabilityBlocks(p: AvailabilityLike, range: DateRange): boolean {
+  if (p.kind === "available_from") return range.startDate < p.startDate
+  return rangesOverlap(p, range)
+}
+
+/** The period covers `day` (the worker is away / not yet available that day). */
+export const availabilityCovers = (p: AvailabilityLike, day: string): boolean => availabilityBlocks(p, { startDate: day, endDate: day })
+
 // ---------------------------------------------------------------- money and rates
 
 export interface TradeRate {

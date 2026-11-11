@@ -644,6 +644,11 @@ export function defineStaffing(system: ConvexSystem, options: StaffingOptions = 
           if (c.fileStorageId) await ctx.storage.delete(c.fileStorageId)
           await db.delete("staffing_workerCertificates", c._id)
         }
+        for (const p of await db
+          .query("staffing_workerAvailability")
+          .withIndex("by_worker", (q) => q.eq("workerId", w._id))
+          .collect())
+          await db.delete("staffing_workerAvailability", p._id)
         await db.delete("staffing_workers", w._id)
         await recordAudit(sys, actor, { action: "staffing.worker.delete", targetType: "staffing_workers", targetId: w._id })
         return { operationId: op }

@@ -81,7 +81,7 @@ const CLIENTS = [
   { name: "UAB Pavyzdinis rangovas", code: "PRG", country: "LT", kind: "subcontractor" as const, period: "monthly" as const, terms: 30, city: "Klaipėda" },
 ]
 
-const TABLES: StaffingTableName[] = ["staffing_assignments", "staffing_workerCertificates", "staffing_projects", "staffing_workers", "staffing_clients", "staffing_certificateTypes", "staffing_trades"]
+const TABLES: StaffingTableName[] = ["staffing_workerAvailability", "staffing_assignments", "staffing_workerCertificates", "staffing_projects", "staffing_workers", "staffing_clients", "staffing_certificateTypes", "staffing_trades"]
 
 export function defineSeed() {
   return {
