@@ -17,6 +17,7 @@ import type { Id } from "@/convex/_generated/dataModel"
 import { useT } from "@/lib/i18n/client"
 import { CertBadge, Period } from "../../staffing/_components/staffing-ui"
 import { ComplianceDisabled, complianceProjectHref, fmt, openPrintable, useComplianceEnabled } from "./compliance-ui"
+import { PackageSendPanel } from "./package-send"
 
 type T = ReturnType<typeof useT>["t"]
 
@@ -117,6 +118,7 @@ export function ProjectPackageView({ projectId }: { projectId: string }) {
       <div className="mb-4 text-sm">
         <Period from={p.startDate} to={p.endDate} />
       </div>
+      <PackageSendPanel projectId={projectId} />
       {pkg.rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("compliance.package.noTeam")}</p>
       ) : (

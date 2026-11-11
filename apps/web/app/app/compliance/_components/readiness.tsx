@@ -15,6 +15,7 @@ import type { Id } from "@/convex/_generated/dataModel"
 import { useT } from "@/lib/i18n/client"
 import { AssignmentStatusBadge, CertBadge, Period, ProjectStatusBadge, projectHref, workerHref } from "../../staffing/_components/staffing-ui"
 import { ComplianceDisabled, ComplianceTabs, complianceProjectHref, fmt, ReadinessBadge, useComplianceEnabled } from "./compliance-ui"
+import { LastSentNote } from "./package-send"
 
 export function ReadinessList() {
   const { t } = useT()
@@ -137,6 +138,7 @@ export function ProjectReadinessView({ projectId }: { projectId: string }) {
         <Period from={p.startDate} to={p.endDate} />
         {r.rows.length > 0 && <ReadinessBadge readiness={r.readiness} />}
         {r.rows.length > 0 && <span className="text-muted-foreground">{fmt(t("compliance.readiness.counts"), r.counts)}</span>}
+        <LastSentNote projectId={p.id} />
       </div>
       <Card>
         <CardHeader>
