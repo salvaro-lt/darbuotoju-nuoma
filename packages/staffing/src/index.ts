@@ -29,4 +29,5 @@ export { staffingTools, staffingListWorkersTool, staffingGetWorkerTool, staffing
 // and tools here, e.g.:
 //   export * from "./timesheets"
 export * from "./teams"
+export * from "./logistics"
 export * from "./compliance"

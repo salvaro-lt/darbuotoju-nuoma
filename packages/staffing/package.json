@@ -12,6 +12,9 @@
     "./tables": "./src/tables.ts",
     "./teams/manifest": "./src/teams/manifest.ts",
     "./teams/matching": "./src/teams/matching.ts",
+    "./logistics/manifest": "./src/logistics/manifest.ts",
+    "./logistics/pure": "./src/logistics/pure.ts",
+    "./logistics/tables": "./src/logistics/tables.ts",
     "./compliance/manifest": "./src/compliance/manifest.ts",
     "./compliance/pure": "./src/compliance/pure.ts"
   },

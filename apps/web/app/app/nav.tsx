@@ -44,6 +44,7 @@ import { DocumentsPermissions } from "@digimuza/documents/manifest"
 import { StaffingPermissions } from "@digimuza/staffing/manifest"
 import { useStaffingEnabled } from "./staffing/_components/staffing-ui"
 import { TeamsNavItem } from "./teams/_components/teams-nav"
+import { LogisticsNavItem } from "./logistics/_components/logistics-nav"
 import { ComplianceNavItem } from "./compliance/_components/compliance-ui"
 import { useDocumentsEnabled, useLabels, useSigningVisible } from "./documents/_components/use-documents"
 import { ObjectIcon } from "./crm/_components/icons"
@@ -135,6 +136,7 @@ export function AppSidebar() {
                 {canClients && <NavItem href="/app/staffing/clients" icon={<Building2 />} label={t("staffing.nav.clients")} />}
                 {/* staffing areas: one NavItem each below */}
                 <TeamsNavItem />
+                <LogisticsNavItem />
                 <ComplianceNavItem Item={NavItem} />
                 {canCatalog && <NavItem href="/app/staffing/catalog" icon={<Library />} label={t("staffing.nav.catalog")} />}
               </SidebarMenu>
