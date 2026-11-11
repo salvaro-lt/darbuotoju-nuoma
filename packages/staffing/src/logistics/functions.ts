@@ -11,6 +11,8 @@ import { StaffingLogisticsPermissions as P } from "./manifest"
 import { alertLines, coordinatorEmail, firstSuperUser, loadPlan, logisticsReader, type LogisticsDataModel, type LogisticsPlan } from "./plan"
 import { autoAssignBeds, autoAssignSeats, hasValidLicence, planSnapshot } from "./pure"
 import { costPeriodValidator, travelDirectionValidator, travelModeValidator, vehicleCostPeriodValidator, vehicleOwnershipValidator } from "./tables"
+import { defineHousing } from "./housing-functions"
+import { defineHousingSeed } from "./housing-seed"
 import { defineLogisticsSeed } from "./seed"
 
 export interface LogisticsOptions {
@@ -205,6 +207,16 @@ export function defineLogistics(system: ConvexSystem, options: LogisticsOptions 
           .withIndex("by_accommodation", (q) => q.eq("accommodationId", cur._id))
           .collect())
           await db.patch("staffing_logistics_allocations", al._id, { accommodationId: undefined, updatedAt: Date.now() })
+        for (const s of await db
+          .query("staffing_logistics_stays")
+          .withIndex("by_accommodation", (q) => q.eq("accommodationId", cur._id))
+          .collect())
+          await db.delete("staffing_logistics_stays", s._id)
+        for (const veh of await db
+          .query("staffing_logistics_vehicles")
+          .withIndex("by_accommodation", (q) => q.eq("accommodationId", cur._id))
+          .collect())
+          await db.patch("staffing_logistics_vehicles", veh._id, { accommodationId: undefined, updatedAt: Date.now() })
         await db.delete("staffing_logistics_accommodations", cur._id)
         await recordAudit(sys, actor, { action: "staffing-logistics.accommodation.delete", targetType: "staffing_logistics_accommodations", targetId: cur._id, changes: { name: cur.name } })
         return { operationId: op }
@@ -273,6 +285,11 @@ export function defineLogistics(system: ConvexSystem, options: LogisticsOptions 
           .withIndex("by_vehicle", (q) => q.eq("vehicleId", cur._id))
           .collect())
           await db.patch("staffing_logistics_allocations", al._id, { vehicleId: undefined, driver: false, updatedAt: Date.now() })
+        for (const l of await db
+          .query("staffing_logistics_vehicleLogs")
+          .withIndex("by_vehicle", (q) => q.eq("vehicleId", cur._id))
+          .collect())
+          await db.delete("staffing_logistics_vehicleLogs", l._id)
         await db.delete("staffing_logistics_vehicles", cur._id)
         await recordAudit(sys, actor, { action: "staffing-logistics.vehicle.delete", targetType: "staffing_logistics_vehicles", targetId: cur._id, changes: { plate: cur.plate } })
         return { operationId: op }
@@ -413,7 +430,9 @@ export function defineLogistics(system: ConvexSystem, options: LogisticsOptions 
         await projectOr404(ctx, a.projectId, op)
         const today = todayIso()
         const plan = (await loadPlan(ctx, a.projectId, { from: today, days: 92, today }))!
-        const allocations = plan.members.map((m) => ({ workerId: m.workerId, accommodationId: m.accommodationId, vehicleId: m.vehicleId, driver: m.driver }))
+        // Members with a bed in the housing pool keep it: they don't get a project bed.
+        const pooled = new Map(plan.poolStays.map((s) => [s.workerId, `pool:${s.accommodationId}`]))
+        const allocations = plan.members.map((m) => ({ workerId: m.workerId, accommodationId: m.accommodationId ?? pooled.get(m.workerId) ?? null, vehicleId: m.vehicleId, driver: m.driver }))
         const input = { today, horizonEnd: plan.window.to, members: plan.members, allocations }
         const db = writer(ctx)
         const upsert = async (workerId: string, patch: { accommodationId?: string; vehicleId?: string; driver?: boolean }) => {
@@ -551,6 +570,8 @@ export function defineLogistics(system: ConvexSystem, options: LogisticsOptions 
     }),
 
     ...defineLogisticsSeed(),
+    ...defineHousing(system),
+    ...defineHousingSeed(),
   }
 }
 

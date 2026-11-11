@@ -14,6 +14,8 @@ import { planSnapshot, type TravelMode } from "./pure"
 import type { LogisticsTableName } from "./tables"
 
 const TABLES: LogisticsTableName[] = [
+  "staffing_logistics_stays",
+  "staffing_logistics_vehicleLogs",
   "staffing_logistics_allocations",
   "staffing_logistics_travelLegs",
   "staffing_logistics_accommodations",

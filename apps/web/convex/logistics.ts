@@ -10,6 +10,8 @@
 // Demo data (dev only, after staffing:_seedDemo):
 //   npx convex run logistics:_seedDemo            (skips if accommodations exist)
 //   npx convex run logistics:_seedDemo '{"reset":true}'
+// Housing pool of the Rotterdam region (flats, stays, fleet, fuel/km log):
+//   npx convex run logistics:_seedHousing         (skips if pool flats exist; '{"reset":true}' rebuilds)
 import { defineLogistics } from "@digimuza/staffing"
 import { system } from "./system"
 
@@ -28,9 +30,22 @@ export const {
   acknowledgePlan,
   setDailyDigest,
   notifyCoordinator,
+  // housing pool and fleet (DIG-110)
+  housingOverview,
+  fleetOverview,
+  housingCosts,
+  saveFlat,
+  saveStay,
+  endStay,
+  applyConsolidation,
+  autoAllocateHousing,
+  saveFleetVehicle,
+  addVehicleLog,
+  deleteVehicleLog,
   // internal
   _dailyDigest,
   _deliver,
   _markNotification,
   _seedDemo,
-} = defineLogistics(system, { functionsPath: "logistics", notifyWebhook: "dr-nuoma-pranesimas" })
+  _seedHousing,
+} =defineLogistics(system, { functionsPath: "logistics", notifyWebhook: "dr-nuoma-pranesimas" })
