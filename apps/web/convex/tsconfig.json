@@ -1,0 +1,21 @@
+{
+  /* Convex functions. `convex dev` / `convex deploy` type-check with this file. */
+  "compilerOptions": {
+    "allowJs": false,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ESNext",
+    "lib": ["ES2023", "dom"],
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "isolatedModules": true,
+    "noEmit": true,
+    "types": ["node", "vite/client"]
+  },
+  "include": ["./**/*", "../modules/**/*", "../env.ts"],
+  "exclude": ["./_generated"]
+}

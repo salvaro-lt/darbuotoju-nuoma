@@ -1,0 +1,162 @@
+# Merge of release/X.Y.Z (or hotfix/X.Y.Z) into `production`
+#   -> promote the image staging ran (X.Y.Z-<sha7>, never rebuilt) to <app>-production
+#   -> tag vX.Y.Z, GitHub Release, back-merge production into main
+#   -> Linear issues -> Done (optional, in the promote job)
+#
+# Release PRs into `production` must use "Create a merge commit": the second
+# parent is the release branch head, which identifies the tested image.
+# Manual redeploy / rollback: run this workflow with `image_tag` (e.g. 1.2.0-abc1234).
+name: Release (production)
+
+on:
+  push:
+    branches: [production]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to (re)deploy, e.g. 1.2.0-abc1234. Deploys Convex from that commit too."
+        required: true
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  REGISTRY: ${{ vars.REGISTRY || 'docker.digimuza.ai' }}
+  IMAGE: ${{ vars.REGISTRY || 'docker.digimuza.ai' }}/${{ vars.REGISTRY_NAMESPACE || 'digimuza' }}/${{ vars.APP_NAME || github.event.repository.name }}
+  INFISCAL_BASE_URL: ${{ vars.INFISCAL_BASE_URL || 'https://infiscal.digimuza.ai' }}
+  INFISCAL_PROJECT_ID: ${{ vars.INFISCAL_PROJECT_ID }}
+  INFISCAL_CLIENT_ID: ${{ secrets.INFISCAL_CLIENT_ID }}
+  INFISCAL_SECRET: ${{ secrets.INFISCAL_SECRET }}
+  INFISCAL_PATH: /
+  INFISCAL_ENV: prod
+
+jobs:
+  resolve:
+    name: Resolve release
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.r.outputs.release }}
+      version: ${{ steps.r.outputs.version }}
+      tag: ${{ steps.r.outputs.tag }}
+      sha: ${{ steps.r.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: r
+        env:
+          INPUT_TAG: ${{ inputs.image_tag }}
+        run: |
+          if [ -n "$INPUT_TAG" ]; then
+            [[ "$INPUT_TAG" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-([0-9a-f]{7})$ ]] || { echo "::error::image_tag must look like X.Y.Z-abc1234"; exit 1; }
+            sha="$(git rev-parse --verify "${BASH_REMATCH[2]}^{commit}")" || { echo "::error::commit ${BASH_REMATCH[2]} not found"; exit 1; }
+            { echo "release=true"; echo "version=${BASH_REMATCH[1]}"; echo "tag=$INPUT_TAG"; echo "sha=$sha"; } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          read -r -a parents <<< "$(git rev-list --parents -n 1 HEAD)"
+          if [ "${#parents[@]}" -ne 3 ]; then
+            echo "::warning::$GITHUB_SHA is not a merge commit, so it is not a release merge. Nothing deployed. Merge release/* PRs with 'Create a merge commit'."
+            echo "release=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          sha="${parents[2]}"
+          branch="$(git branch -r --contains "$sha" --format='%(refname:short)' | grep -E '^origin/(release|hotfix)/' | head -1 || true)"
+          version="$(git show "$sha:package.json" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).version))')"
+          echo "Release head $sha (${branch:-branch deleted}), version $version"
+          if existing="$(git rev-parse -q --verify "refs/tags/v$version^{commit}")" && [ "$existing" != "$GITHUB_SHA" ]; then
+            echo "::error::v$version is already released ($existing). Bump the version on the release branch."; exit 1
+          fi
+          { echo "release=true"; echo "version=$version"; echo "tag=$version-${sha::7}"; echo "sha=$sha"; } >> "$GITHUB_OUTPUT"
+
+  promote:
+    name: Promote image to production
+    needs: resolve
+    if: needs.resolve.outputs.release == 'true' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
+    steps:
+      # Convex is deployed from the exact commit the image was built from.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Deploy secrets from Infisical (prod)
+        run: pnpm -s ci:secrets REGISTRY_USERNAME REGISTRY_PASSWORD COOLIFY_TOKEN COOLIFY_APP_UUID SITE_URL "COOLIFY_URL?" "LINEAR_API_KEY?"
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.REGISTRY_USERNAME }}
+          password: ${{ env.REGISTRY_PASSWORD }}
+      - uses: docker/setup-buildx-action@v3
+      - name: Image staging tested must exist (production never rebuilds)
+        run: |
+          src="$IMAGE:${{ needs.resolve.outputs.tag }}"
+          docker buildx imagetools inspect "$src" >/dev/null || {
+            echo "::error::$src not found. Push the release branch so release.yml builds it, then retry."; exit 1; }
+          # Same manifest, extra names. No rebuild.
+          docker buildx imagetools create -t "$IMAGE:v${{ needs.resolve.outputs.version }}" -t "$IMAGE:production" "$src"
+      - name: Deploy Convex (prod)
+        run: pnpm deploy:convex
+      - name: Deploy image on Coolify (<app>-production)
+        run: >
+          pnpm -s ci:coolify-deploy --image "$IMAGE" --tag "${{ needs.resolve.outputs.tag }}"
+          --revision "${{ needs.resolve.outputs.sha }}" --health-url "$SITE_URL/api/health"
+      - name: Linear issues -> Done (optional)
+        if: github.event_name == 'push'
+        run: >
+          pnpm -s ci:linear --state Done --range "${{ github.sha }}^1..${{ github.sha }}^2"
+          --project "${{ vars.LINEAR_PROJECT }}" --version "${{ needs.resolve.outputs.version }}" --environment production
+
+  finalize:
+    name: Tag, release, back-merge
+    needs: [resolve, promote]
+    # Also runs when deploys are disabled (template repo): tagging and back-merge still apply.
+    if: >
+      always() && github.event_name == 'push' && needs.resolve.outputs.release == 'true' &&
+      (needs.promote.result == 'success' || needs.promote.result == 'skipped')
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.resolve.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Tag vX.Y.Z and create the GitHub Release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            git tag -a "v$VERSION" -m "v$VERSION" "$GITHUB_SHA"
+            git push origin "v$VERSION"
+          fi
+          gh release view "v$VERSION" >/dev/null 2>&1 || \
+            gh release create "v$VERSION" --verify-tag --title "v$VERSION" --generate-notes \
+              --notes "Image: \`$IMAGE:${{ needs.resolve.outputs.tag }}\`"
+      - name: Back-merge production into main
+        run: |
+          git switch main
+          if git merge --no-ff origin/production -m "chore: back-merge production v$VERSION into main" && git push origin main; then
+            echo "Merged production into main."
+          else
+            # main is protected or the merge conflicts: hand it over as a PR.
+            git merge --abort 2>/dev/null || git reset --hard origin/main
+            branch="backmerge/v$VERSION"
+            git push origin "origin/production:refs/heads/$branch" --force
+            gh pr view "$branch" >/dev/null 2>&1 || gh pr create --base main --head "$branch" \
+              --title "chore: back-merge production v$VERSION into main" \
+              --body "Automatic back-merge after releasing v$VERSION. Resolve conflicts if any, then merge."
+            echo "::notice::Opened back-merge PR $branch -> main"
+          fi

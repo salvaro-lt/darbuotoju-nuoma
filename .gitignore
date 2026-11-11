@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+*.tsbuildinfo
+next-env.d.ts
+coverage
+
+# Local env. Secrets live in Infisical; never commit values.
+.env
+.env.*
+!.env.example
+.playwright-mcp
+.convex
+
+# Local agent tooling
+.serena/

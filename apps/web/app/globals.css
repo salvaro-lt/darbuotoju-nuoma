@@ -1,0 +1,284 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Radix state variants. shadcn's radix-nova components are written against
+ * boolean attributes (`data-open`, `data-checked`, …) while Radix emits
+ * `data-state="open|checked|…"` and `data-orientation`. shadcn/tailwind.css maps
+ * most of them; they are declared here once more so the app does not depend on
+ * that file's contents, and to cover the cases it misses: tooltip states
+ * (`delayed-open` / `instant-open`), toggles (`on`), and attributes React
+ * renders as the string "false" (cmdk's `data-selected`/`data-disabled`, the
+ * sidebar's `data-active={isActive}`, menus' `data-inset={inset}`).
+ * Zero-specificity (:where) like shadcn's, so utilities keep their order.
+ */
+@custom-variant data-open (&:where([data-state="open"], [data-state="delayed-open"], [data-state="instant-open"], [data-open]:not([data-open="false"])));
+@custom-variant data-closed (&:where([data-state="closed"], [data-closed]:not([data-closed="false"])));
+@custom-variant data-checked (&:where([data-state="checked"], [data-state="on"], [data-checked]:not([data-checked="false"])));
+@custom-variant data-unchecked (&:where([data-state="unchecked"], [data-state="off"], [data-unchecked]:not([data-unchecked="false"])));
+@custom-variant data-active (&:where([data-state="active"], [data-active]:not([data-active="false"])));
+@custom-variant data-selected (&:where([data-selected]:not([data-selected="false"])));
+@custom-variant data-disabled (&:where([data-disabled]:not([data-disabled="false"])));
+@custom-variant data-inset (&:where([data-inset]:not([data-inset="false"])));
+@custom-variant data-horizontal (&:where([data-orientation="horizontal"], [data-horizontal]:not([data-horizontal="false"])));
+@custom-variant data-vertical (&:where([data-orientation="vertical"], [data-vertical]:not([data-vertical="false"])));
+
+/*
+ * Motion tokens. One curve family (ease-out to arrive, ease-in to leave), short durations: this is
+ * an operations tool, motion only explains state, place and arrival. Use them as
+ * `ease-out`, `duration-(--duration-base)`, `animate-fade-in`, … Every animation
+ * here has a prefers-reduced-motion path at the end of this file.
+ */
+@theme {
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+    --animate-fade-in: fade-in var(--duration-base) var(--ease-out) backwards;
+    --animate-rise-in: rise-in var(--duration-slow) var(--ease-out) backwards;
+    --animate-landed: landed 900ms var(--ease-out);
+    --animate-attention: attention 2.4s var(--ease-in-out) 3;
+    --animate-pending-bar: pending-bar 1.2s var(--ease-in-out) infinite;
+    --animate-pop: pop var(--duration-base) var(--ease-out) both;
+    --animate-grow-x: grow-x var(--duration-emphasis) var(--ease-out) backwards;
+
+    @keyframes fade-in {
+        from { opacity: 0; }
+    }
+    @keyframes rise-in {
+        from { opacity: 0; translate: 0 var(--motion-distance); }
+    }
+    @keyframes landed {
+        from { box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 45%, transparent); }
+        to { box-shadow: 0 0 0 3px transparent; }
+    }
+    @keyframes attention {
+        0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 0%, transparent); }
+        50% { box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 22%, transparent); }
+    }
+    @keyframes pending-bar {
+        from { translate: -100% 0; }
+        to { translate: 250% 0; }
+    }
+    @keyframes grow-x {
+        from { scale: 0 1; }
+    }
+    @keyframes pop {
+        0% { scale: 0.6; opacity: 0; }
+        60% { scale: 1.08; opacity: 1; }
+        100% { scale: 1; }
+    }
+}
+
+:root {
+    --duration-press: 120ms;
+    --duration-fast: 150ms;
+    --duration-base: 200ms;
+    --duration-slow: 250ms;
+    --duration-emphasis: 500ms;
+    /* How far things travel when they arrive. 0 under reduced motion. */
+    --motion-distance: 6px;
+}
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: var(--font-sans);
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    /* The client's accent (brand.ts → --brand-accent-*, set on <html>). */
+    --primary: var(--brand-accent-light, #2f5d50);
+    --primary-foreground: var(--brand-accent-text-light, #ffffff);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: color-mix(in oklab, var(--primary) 60%, transparent);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: var(--ring);
+}
+
+.dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: var(--brand-accent-dark, #7fb8a4);
+    --primary-foreground: var(--brand-accent-text-dark, #0f201a);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: color-mix(in oklab, var(--primary) 55%, transparent);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: var(--ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+  html {
+    @apply font-sans;
+    color-scheme: light;
+    caret-color: var(--primary);
+    accent-color: var(--primary);
+    scrollbar-color: var(--border) transparent;
+  }
+  html.dark { color-scheme: dark; }
+  ::selection { background: color-mix(in oklab, var(--primary) 25%, transparent); }
+  h1, h2, h3 { text-wrap: balance; }
+  p { text-wrap: pretty; }
+  a { text-underline-offset: 0.2em; }
+}
+
+/* Third-party: the WorkOS account widgets (Radix Themes) take the app font. */
+.account-widgets .radix-themes { --default-font-family: var(--font-sans); background: transparent; }
+
+/* ---------- Route transitions (React <ViewTransition>, see components/app/content-frame.tsx) ---------- */
+
+/* Clicks during a transition reach the live page, not the snapshot overlay. */
+::view-transition { pointer-events: none; }
+
+/* The shell (sidebar, header) is the root snapshot: it never animates. Only
+   the named content area and shared elements move. */
+::view-transition-old(root) { animation: none; display: none; }
+::view-transition-new(root) { animation: none; }
+
+/* Old page leaves fast (120 ms); the new one starts as it goes and settles by 250 ms. */
+::view-transition-old(.page-out) {
+    animation: vt-fade-out 120ms var(--ease-in) both;
+}
+::view-transition-new(.page-in) {
+    animation: vt-rise-in 190ms var(--ease-out) 60ms both;
+}
+/* Same place, other content (tabs, board ↔ list). */
+::view-transition-old(.swap) { animation: vt-fade-out var(--duration-fast) var(--ease-in) both; }
+::view-transition-new(.swap) { animation: vt-fade-in var(--duration-base) var(--ease-out) both; }
+/* Skeleton → content. */
+::view-transition-new(.reveal) { animation: vt-fade-in var(--duration-base) var(--ease-out) both; }
+::view-transition-old(.reveal) { animation: vt-fade-out var(--duration-fast) var(--ease-in) both; }
+
+/* Shared elements (order number card → page, kanban card → other column). */
+::view-transition-group(.morph) {
+    animation-duration: var(--duration-slow);
+    animation-timing-function: var(--ease-out);
+}
+::view-transition-group(.card-move) {
+    animation-duration: var(--duration-slow);
+    animation-timing-function: var(--ease-out);
+    z-index: 10;
+}
+::view-transition-image-pair(.morph),
+::view-transition-image-pair(.card-move) { isolation: isolate; }
+
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-in { from { opacity: 0; } }
+@keyframes vt-rise-in { from { opacity: 0; translate: 0 var(--motion-distance); } }
+
+/* Browsers without View Transitions: the content area still fades in on mount. */
+html.no-vt [data-page-transition] { animation: fade-in var(--duration-base) var(--ease-out) backwards; }
+
+/* ---------- Reduced motion: no travel, no scale; fades shorten, state stays legible ---------- */
+@media (prefers-reduced-motion: reduce) {
+    :root { --motion-distance: 0px; }
+    *, ::before, ::after {
+        --tw-enter-translate-x: 0 !important;
+        --tw-enter-translate-y: 0 !important;
+        --tw-enter-scale: 1 !important;
+        --tw-exit-translate-x: 0 !important;
+        --tw-exit-translate-y: 0 !important;
+        --tw-exit-scale: 1 !important;
+        scroll-behavior: auto !important;
+    }
+    .animate-attention, .animate-pop, .animate-pending-bar, .animate-grow-x,
+    .animate-collapsible-down, .animate-collapsible-up { animation: none !important; }
+    ::view-transition-group(*) { animation-duration: 0s !important; }
+    ::view-transition-new(.page-in) { animation: vt-fade-in var(--duration-fast) linear both; }
+    ::view-transition-old(.page-out) { animation: vt-fade-out 80ms linear both; }
+}

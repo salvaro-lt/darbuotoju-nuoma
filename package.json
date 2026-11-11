@@ -1,0 +1,31 @@
+{
+  "name": "system-template",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.4",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @app/web dev",
+    "build": "pnpm --filter @app/web build",
+    "build:start": "pnpm --filter @app/web build:start",
+    "typecheck": "pnpm -r --no-bail typecheck",
+    "lint": "pnpm -r --no-bail lint",
+    "test": "pnpm -r --no-bail test",
+    "codegen": "pnpm --filter @app/web codegen",
+    "core:vendor": "pnpm --filter @app/web core:vendor",
+    "core:link": "pnpm --filter @app/web core:link",
+    "core:npm": "pnpm --filter @app/web core:npm",
+    "deploy:convex": "pnpm --filter @app/web deploy:convex",
+    "ci:secrets": "pnpm -s --filter @app/web ci:secrets",
+    "ci:coolify-deploy": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/coolify-deploy.ts",
+    "ci:linear": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/linear-transition.ts",
+    "release:cut": "node scripts/release-cut.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}

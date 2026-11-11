@@ -1,0 +1,135 @@
+# release/X.Y.Z or hotfix/X.Y.Z  ->  build the image once  ->  deploy to <app>-staging
+#
+# Every push to the branch (the first cut and each fix after it) runs this.
+# The image is tagged X.Y.Z-<sha7> (immutable, what production later promotes)
+# and X.Y.Z (moving, latest build of the release).
+#
+# Setup: README.md → "Releasing". Without the repository variable
+# DEPLOY_ENABLED=true only the checks run (as on the template repo itself).
+name: Release (staging)
+
+on:
+  push:
+    branches: ["release/**", "hotfix/**"]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ${{ vars.REGISTRY || 'docker.digimuza.ai' }}
+  IMAGE: ${{ vars.REGISTRY || 'docker.digimuza.ai' }}/${{ vars.REGISTRY_NAMESPACE || 'digimuza' }}/${{ vars.APP_NAME || github.event.repository.name }}
+  # Infisical bootstrap for the CI machine identity. Everything else comes from
+  # Infisical: `/` (app runtime) and `/ci` (CONVEX_DEPLOY_KEY, REGISTRY_*, COOLIFY_*, LINEAR_API_KEY).
+  INFISCAL_BASE_URL: ${{ vars.INFISCAL_BASE_URL || 'https://infiscal.digimuza.ai' }}
+  INFISCAL_PROJECT_ID: ${{ vars.INFISCAL_PROJECT_ID }}
+  INFISCAL_CLIENT_ID: ${{ secrets.INFISCAL_CLIENT_ID }}
+  INFISCAL_SECRET: ${{ secrets.INFISCAL_SECRET }}
+  INFISCAL_PATH: /
+  INFISCAL_ENV: staging
+
+jobs:
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        name: Version from branch name, must match package.json
+        run: |
+          version="${GITHUB_REF_NAME#*/}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Branch $GITHUB_REF_NAME is not release/X.Y.Z or hotfix/X.Y.Z"; exit 1
+          fi
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$pkg" != "$version" ]; then
+            echo "::error::package.json version is $pkg, branch says $version. Bump it on the release branch (pnpm release:cut does this)."; exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$version-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+  checks:
+    name: Checks
+    uses: ./.github/workflows/ci.yml
+
+  image:
+    name: Build and push image
+    needs: [version, checks]
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Registry credentials from Infisical
+        run: pnpm -s ci:secrets REGISTRY_USERNAME REGISTRY_PASSWORD
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.REGISTRY_USERNAME }}
+          password: ${{ env.REGISTRY_PASSWORD }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ needs.version.outputs.tag }}
+            ${{ env.IMAGE }}:${{ needs.version.outputs.version }}
+          build-args: |
+            APP_VERSION=${{ needs.version.outputs.version }}
+            GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to staging
+    needs: [version, image]
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_URL }}
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Deploy secrets from Infisical
+        run: pnpm -s ci:secrets COOLIFY_TOKEN COOLIFY_APP_UUID SITE_URL "COOLIFY_URL?" "LINEAR_API_KEY?"
+      # Convex first (schema, functions, env, module catalog), then the image.
+      # Keep Convex changes backward compatible with the running release.
+      - name: Deploy Convex (staging)
+        run: pnpm deploy:convex
+      - name: Deploy image on Coolify (<app>-staging)
+        run: >
+          pnpm -s ci:coolify-deploy --image "$IMAGE" --tag "${{ needs.version.outputs.tag }}"
+          --revision "$GITHUB_SHA" --health-url "$SITE_URL/api/health"
+      - name: Linear issues -> In Staging (optional)
+        if: success()
+        run: |
+          if git ls-remote --exit-code --heads origin production >/dev/null; then
+            git fetch origin production; range="origin/production..HEAD"
+          else
+            range="HEAD"
+          fi
+          pnpm -s ci:linear --state "In Staging" --range "$range" --project "${{ vars.LINEAR_PROJECT }}" \
+            --version "${{ needs.version.outputs.version }}" --environment staging
