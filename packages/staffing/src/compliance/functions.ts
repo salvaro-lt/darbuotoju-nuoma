@@ -20,12 +20,17 @@ import {
 import { pickDigest, digestKey, unknownPlaceholders, type DigestThreshold, type Readiness, type RequirementScope } from "./pure"
 import { digestItemValidator, requirementScopeValidator, templateLanguageValidator, type DigestRunStatus } from "./tables"
 import { defineComplianceSeed } from "./seed"
+import { definePackageFunctions } from "./package-functions"
 
 export interface ComplianceOptions {
   /** Module path (relative to `convex/`) where these functions are exported. Default "compliance". */
   functionsModule?: string
-  /** Your company's name for `{{company.name}}` in contracts. */
+  /** Your company's name for `{{company.name}}` in contracts (and the signature of package emails). */
   companyName?: string
+  /** Client document package: attach files up to this many bytes in total (default 15 MB), else a ZIP link. */
+  packageCapBytes?: number
+  /** Client document package: days a public download link stays valid (default 14). */
+  packageLinkDays?: number
 }
 
 export interface RequirementView {
@@ -523,6 +528,9 @@ export function defineCompliance(system: ConvexSystem, options: ComplianceOption
         return { operationId: sys.operationId }
       },
     }),
+
+    // ---------------------------------------------------------------- client document package (DIG-113)
+    ...definePackageFunctions(system, { ref, companyName: companyName ?? "", ...(options.packageCapBytes ? { capBytes: options.packageCapBytes } : {}), ...(options.packageLinkDays ? { linkDays: options.packageLinkDays } : {}) }),
 
     // ---------------------------------------------------------------- dev
     ...defineComplianceSeed({ ref, ...(companyName ? { companyName } : {}) }),

@@ -215,6 +215,17 @@ const html = layout(b.title || 'Pranešimas', `${b.text ? `<p>${esc(b.text)}</p>
 return send(b, b.to, b.title || 'Pranešimas', html);
 """))
 
+# 7. Client document package (DIG-113): the app builds subject + HTML (team, document
+#    validity, "Trūksta: …") and sends the certificate scans as URLs; Resend fetches
+#    each `path` itself. Big packages come without attachments, with a ZIP link in the body.
+workflows.append(mail_workflow("Dokumentų paketas klientui", "dokumentu-paketas", r"""
+const out = send(b, b.to, b.subject || 'Darbuotojų dokumentai', layout(b.subject || 'Darbuotojų dokumentai', b.html || `<pre>${esc(b.text)}</pre>`));
+const files = (b.attachments ?? []).filter((a) => a && a.url && a.filename).slice(0, 40);
+if (files.length) out[0].json.attachments = files.map((a) => ({ filename: a.filename, path: a.url }));
+if (b.text) out[0].json.text = b.text;
+return out;
+"""))
+
 # 6. Quick win from the audit: purchase invoices from 3 mailboxes → SitePro address.
 #    Inactive: needs the client's mailbox (IMAP) credentials and the SitePro address.
 workflows.append({

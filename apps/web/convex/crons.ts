@@ -10,6 +10,8 @@ crons.daily("logistics daily warnings", { hourUTC: 6, minuteUTC: 0 }, internal.l
 crons.daily("timesheets late client reminders", { hourUTC: 7, minuteUTC: 0 }, internal.timesheets._dailyReminders)
 // staffing-compliance: daily digest of documents expiring in 60 / 30 days or expired (n8n → planner).
 crons.daily("staffing-compliance expiry digest", { hourUTC: 5, minuteUTC: 0 }, internal.compliance._dailyDigest)
+// staffing-compliance: document packages queued by the assistant (its tools cannot schedule) → n8n dr-nuoma-dokumentu-paketas.
+crons.interval("staffing-compliance document packages", { seconds: 15 }, internal.compliance._drainPackages)
 // Staffing invoicing: payment reminders via n8n (stage 1 at +3 days overdue, stage 2 at +14).
 crons.daily("staffing-invoicing payment reminders", { hourUTC: 6, minuteUTC: 0 }, internal.invoicing._dailyReminders, {})
 // n8n module (convex/n8n.ts, by name): approved assistant writes (n8nOps outbox) → n8n;

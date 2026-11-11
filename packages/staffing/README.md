@@ -123,3 +123,27 @@ permissions), lives in this package and touches the shared files with one line e
 4. Pages under `apps/web/app/app/<area>/` with `requireSession({ permission })`, `<Can>`, `useAction`; reuse
    `app/app/staffing/_components/staffing-ui.tsx` (badges, `Period`, `NativeSelect`, `useTrades`, hrefs).
 5. Codegen (`npx convex dev --once` in `apps/web`), `npx convex run system:registerSystem`, Super enables the module.
+
+## Compliance: client document package (DIG-113)
+
+"Agent, send these people's documents to this client": `src/compliance/package-*.ts`.
+
+- **Rule** (`evaluatePackage`, pure): complete when every required document (country + client requirements) of
+  every chosen member is valid/expiring **and** has a scan → `ready`; anything missing, expired or without a scan →
+  `needs_approval` with the missing list. Expiring documents are listed as warnings only.
+- **Flow**: package page `/app/compliance/projects/<id>/package` → "Siųsti klientui…" (recipients from the client's
+  contacts, LT/EN/NL, team members, note, live preview) → `createPackage`. `ready` is sent at once when the project's
+  "Siųsti automatiškai" switch is on, else with one click (`sendPackage`); `needs_approval` → "Siųsti vis tiek" or
+  "Atšaukti". The AI tool `staffing-compliance.send_package` (approval card) sends complete packages and leaves
+  incomplete ones waiting; its queue is drained by the cron `compliance:_drainPackages` (tool handlers cannot schedule).
+- **Sending path: n8n** webhook `dr-nuoma-dokumentu-paketas` (`n8n/deploy.py`): `apps/web/convex/mail.ts` (Resend)
+  has no attachments. The app renders subject/HTML/text; attachments are file URLs Resend fetches. Over
+  `packageCapBytes` (default 15 MB) or 40 files → no attachments, a ZIP link instead. Non-production → `redirectTo`
+  = first `SUPER_USER_EMAILS`. Without `N8N_URL`/`N8N_WEBHOOK_SECRET` → status `not_configured` ("Nesukonfigūruota"),
+  the package stays downloadable through a link.
+- **Log**: `staffing_compliance_packages` (who, when, to whom, each document with certificate id + `updatedAt`
+  version, missing list, approver), `packageSends` (worker card "Paskutinį kartą siųsta klientui …"),
+  `packageLinks` (SHA-256 of the token, expiry, revocation), `packageDownloads` (views and ZIP downloads).
+- **Public link** `/d/<token>` (no login, default 14 days, `/d/<token>/zip` builds the ZIP server-side).
+- **Demo**: `compliance:_seedDemo` adds VSB-2026-14 (complete → `ready`), a `needs_approval` package on VSB-2026-12
+  and a send history; `compliance:_seedPackageLink '{"projectCode":"VSB-2026-12"}'` prints a fresh public link.

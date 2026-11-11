@@ -19,6 +19,7 @@ export const staffingCompliance = defineModule({
     { id: "staffing-compliance:contract:read", name: "Matyti sutartis", description: "Matyti sutarčių šablonus ir sugeneruotas sutartis" },
     { id: "staffing-compliance:contract:create", name: "Generuoti sutartis", description: "Generuoti sutartis ir įsakymus darbuotojams iš šablonų" },
     { id: "staffing-compliance:template:manage", name: "Valdyti sutarčių šablonus", description: "Kurti, keisti ir šalinti sutarčių šablonus, šalinti sutartis" },
+    { id: "staffing-compliance:package:send", name: "Siųsti dokumentų paketą klientui", description: "Paruošti, patvirtinti ir siųsti komandos dokumentų paketą klientui el. paštu, kurti atsisiuntimo nuorodas" },
   ],
   initialSubroles: [
     {
@@ -30,8 +31,8 @@ export const staffingCompliance = defineModule({
     {
       id: "staffing-compliance:planner",
       name: "Dokumentų planuotojas",
-      description: "Mato pasirengimą, siunčia suvestines, generuoja sutartis",
-      permissions: ["staffing-compliance:readiness:read", "staffing-compliance:digest:send", "staffing-compliance:contract:read", "staffing-compliance:contract:create"],
+      description: "Mato pasirengimą, siunčia suvestines ir dokumentų paketus klientams, generuoja sutartis",
+      permissions: ["staffing-compliance:readiness:read", "staffing-compliance:digest:send", "staffing-compliance:contract:read", "staffing-compliance:contract:create", "staffing-compliance:package:send"],
     },
     {
       id: "staffing-compliance:admin",
@@ -44,6 +45,7 @@ export const staffingCompliance = defineModule({
         "staffing-compliance:contract:read",
         "staffing-compliance:contract:create",
         "staffing-compliance:template:manage",
+        "staffing-compliance:package:send",
       ],
     },
   ],
@@ -56,6 +58,7 @@ export const StaffingCompliancePermissions = {
   contractRead: "staffing-compliance:contract:read",
   contractCreate: "staffing-compliance:contract:create",
   templateManage: "staffing-compliance:template:manage",
+  packageSend: "staffing-compliance:package:send",
 } as const satisfies Record<string, PermissionOf<typeof staffingCompliance>>
 
 export const STAFFING_COMPLIANCE_MODULE_ID = "staffing-compliance"

@@ -8,6 +8,7 @@ import { addDays, addMonths, fullName, todayIso } from "../pure"
 import { writerOf, type AssignmentId, type CertificateTypeId, type StorageId, type WorkerId } from "../shared"
 import { draftContract, type ComplianceDataModel, type TemplateId } from "./operations"
 import { simplePdf, type RequirementScope } from "./pure"
+import { definePackageSeed } from "./package-seed"
 
 const DEMO_NOTE = "compliance-demo"
 
@@ -97,7 +98,18 @@ export function defineComplianceSeed(o: { ref: (name: string) => unknown; compan
         if (!env || env === "production") throw new Error(`compliance:_seedDemo refuses to run with APP_ENV=${env ?? "(unset)"}`)
         const db = writerOf<ComplianceDataModel>(ctx)
         if (a.reset) {
-          for (const t of ["staffing_compliance_contracts", "staffing_compliance_templates", "staffing_compliance_requirements", "staffing_compliance_digestLog", "staffing_compliance_digestRuns"] as const)
+          for (const t of [
+            "staffing_compliance_contracts",
+            "staffing_compliance_templates",
+            "staffing_compliance_requirements",
+            "staffing_compliance_digestLog",
+            "staffing_compliance_digestRuns",
+            "staffing_compliance_packageSends",
+            "staffing_compliance_packageDownloads",
+            "staffing_compliance_packageLinks",
+            "staffing_compliance_packages",
+            "staffing_compliance_packageSettings",
+          ] as const)
             for (const row of await db.query(t).collect()) await db.delete(t, row._id as never)
           for (const c of await db.query("staffing_workerCertificates").collect()) if (c.notes === DEMO_NOTE) await db.delete("staffing_workerCertificates", c._id)
           const client = await db
@@ -119,6 +131,8 @@ export function defineComplianceSeed(o: { ref: (name: string) => unknown; compan
             await db.delete("staffing_clients", client._id)
           }
         } else if (await db.query("staffing_compliance_templates").first()) {
+          // Already seeded: still add the document package demo (DIG-113) if it is missing.
+          await ctx.scheduler.runAfter(0, ref("_seedFiles") as FunctionReference<"action", "internal">, {})
           return { seeded: false, requirements: 0, certificates: 0, contracts: 0 }
         }
         const now = Date.now()
@@ -312,6 +326,8 @@ export function defineComplianceSeed(o: { ref: (name: string) => unknown; compan
           const fileName = `${t.worker} - ${t.type}.pdf`.replace(/[\\/:*?"<>|]+/g, "_")
           await ctx.runMutation(ref("_attachSeedFile") as FunctionReference<"mutation", "internal">, { certificateId: t.certificateId, storageId, fileName })
         }
+        // The client document package demo (DIG-113) needs the scans first.
+        await ctx.runMutation(ref("_seedPackages") as FunctionReference<"mutation", "internal">, {})
         return targets.length
       },
     }),
@@ -325,5 +341,7 @@ export function defineComplianceSeed(o: { ref: (name: string) => unknown; compan
         await db.patch("staffing_workerCertificates", c._id, { fileStorageId: a.storageId as StorageId, fileName: a.fileName })
       },
     }),
+
+    ...definePackageSeed({ ref: o.ref, companyName: o.companyName ?? "" }),
   }
 }

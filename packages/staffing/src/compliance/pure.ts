@@ -331,3 +331,6 @@ export function simplePdf(title: string, lines: readonly string[]): Uint8Array {
   out += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`
   return new TextEncoder().encode(out)
 }
+
+// ---------------------------------------------------------------- client document package (DIG-113)
+export * from "./package-pure"

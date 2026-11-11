@@ -19,3 +19,17 @@ export {
   type DigestRunView,
 } from "./functions"
 export { complianceTools, complianceProjectReadinessTool } from "./ai-tools"
+// Client document package (DIG-113).
+export {
+  definePackageFunctions,
+  cleanRecipients,
+  PACKAGE_WEBHOOK,
+  type PackagePreview,
+  type PackageComposer,
+  type PackageLogView,
+  type PackageGapView,
+  type WorkerPackageSend,
+  type SharedPackage,
+} from "./package-functions"
+export { buildPackageDraft, insertPackage, issuePackageLink, type PackageDraft, type PackageCandidate, type PackageMember, type PackageRecipient, type PackageId } from "./package-operations"
+export { complianceSendPackageTool } from "./ai-tools"
