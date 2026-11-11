@@ -13,6 +13,7 @@ import { staffing, StaffingPermissions } from "@digimuza/staffing/manifest"
 import { staffingTeams } from "@digimuza/staffing/teams/manifest"
 import { staffingTimesheets } from "@digimuza/staffing/timesheets/manifest"
 import { staffingCompliance } from "@digimuza/staffing/compliance/manifest"
+import { staffingInvoicing } from "@digimuza/staffing/invoicing/manifest"
 import { mcp, McpPermissions } from "@digimuza/system-core/mcp"
 import { staffingLogistics } from "@digimuza/staffing/logistics/manifest"
 
@@ -34,5 +35,6 @@ export const appModules = [
   staffingLogistics,
   staffingTimesheets,
   staffingCompliance,
+  staffingInvoicing,
 ]
 export { staffing, StaffingPermissions, ai, AiPermissions, automations, AutomationsPermissions, crm, CrmPermissions, documents, DocumentsPermissions, finance, FinancePermissions, ingest, IngestPermissions, mcp, McpPermissions }

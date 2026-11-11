@@ -21,6 +21,7 @@ import type * as crons from "../crons.js";
 import type * as documents from "../documents.js";
 import type * as finance from "../finance.js";
 import type * as ingest from "../ingest.js";
+import type * as invoicing from "../invoicing.js";
 import type * as logistics from "../logistics.js";
 import type * as mail from "../mail.js";
 import type * as mcp from "../mcp.js";
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   documents: typeof documents;
   finance: typeof finance;
   ingest: typeof ingest;
+  invoicing: typeof invoicing;
   logistics: typeof logistics;
   mail: typeof mail;
   mcp: typeof mcp;

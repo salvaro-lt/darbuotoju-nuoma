@@ -19,7 +19,9 @@
     "./timesheets/pure": "./src/timesheets/pure.ts",
     "./timesheets/tables": "./src/timesheets/tables.ts",
     "./compliance/manifest": "./src/compliance/manifest.ts",
-    "./compliance/pure": "./src/compliance/pure.ts"
+    "./compliance/pure": "./src/compliance/pure.ts",
+    "./invoicing/manifest": "./src/invoicing/manifest.ts",
+    "./invoicing/pure": "./src/invoicing/pure.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
