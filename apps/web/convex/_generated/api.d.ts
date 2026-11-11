@@ -26,6 +26,7 @@ import type * as roleAdmin from "../roleAdmin.js";
 import type * as search from "../search.js";
 import type * as staffing from "../staffing.js";
 import type * as system from "../system.js";
+import type * as teams from "../teams.js";
 
 import type {
   ApiFromModules,
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   search: typeof search;
   staffing: typeof staffing;
   system: typeof system;
+  teams: typeof teams;
 }>;
 
 /**
