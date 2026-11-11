@@ -7,6 +7,7 @@ import { documentsArchiveEn, documentsArchiveLt } from "./documents-archive-mess
 import { documentsSigningEn, documentsSigningLt } from "./documents-signing-messages"
 import { staffingEn, staffingLt } from "./staffing-messages"
 // Staffing areas: one import each below.
+import { logisticsEn, logisticsLt } from "./logistics-messages"
 
 export const LOCALES = ["lt", "en"] as const
 export type Locale = (typeof LOCALES)[number]
@@ -687,6 +688,7 @@ const lt = {
   ...documentsArchiveLt,
   ...staffingLt,
   // staffing areas (lt): one spread each below
+  ...logisticsLt,
   ...documentsSigningLt,
 } as const
 
@@ -1366,6 +1368,7 @@ const en: Record<MessageKey, string> = {
   ...documentsArchiveEn,
   ...staffingEn,
   // staffing areas (en): one spread each below
+  ...logisticsEn,
   ...documentsSigningEn,
 }
 
