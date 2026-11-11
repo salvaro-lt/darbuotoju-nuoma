@@ -15,6 +15,7 @@ import { financeTools } from "@digimuza/system-core/finance"
 import { documentsTools } from "@digimuza/documents"
 import { staffingTools, teamsTools } from "@digimuza/staffing"
 import { complianceTools } from "@digimuza/staffing"
+import { planningTools } from "@digimuza/staffing"
 import { automationTargets, ingestConsumers } from "./automationsConfig"
 
 /** List, explain, test, create and change automations; approve queued results. */
@@ -52,7 +53,7 @@ export const assistant = defineAiAgent({
     "Keep answers short and clear. Amounts are in major units (e.g. 12.50 EUR).",
     AUTOMATION_INSTRUCTIONS,
   ].join("\n"),
-  tools: [...financeTools, ...documentsTools, ...staffingTools, ...teamsTools, ...complianceTools, ...automationTools, ...ingestTools, ...displayTools],
+  tools: [...financeTools, ...documentsTools, ...staffingTools, ...teamsTools, ...complianceTools, ...planningTools, ...automationTools, ...ingestTools, ...displayTools],
 })
 
 /** The app's public URL for n8n nodes that call back. Module scope: a missing or invalid env must not break loading, so a placeholder then. */

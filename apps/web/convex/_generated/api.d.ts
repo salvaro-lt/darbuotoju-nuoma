@@ -36,6 +36,7 @@ import type * as n8n from "../n8n.js";
 import type * as n8nAiTools from "../n8nAiTools.js";
 import type * as n8nSetup from "../n8nSetup.js";
 import type * as notifications from "../notifications.js";
+import type * as planning from "../planning.js";
 import type * as replies from "../replies.js";
 import type * as roleAdmin from "../roleAdmin.js";
 import type * as search from "../search.js";
@@ -80,6 +81,7 @@ declare const fullApi: ApiFromModules<{
   n8nAiTools: typeof n8nAiTools;
   n8nSetup: typeof n8nSetup;
   notifications: typeof notifications;
+  planning: typeof planning;
   replies: typeof replies;
   roleAdmin: typeof roleAdmin;
   search: typeof search;

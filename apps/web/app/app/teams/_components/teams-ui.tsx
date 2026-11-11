@@ -21,14 +21,14 @@ export function TeamCount({ picked, needed }: { picked: number; needed: number }
   )
 }
 
-const SEVERE = new Set(["cert_missing", "cert_expired", "level_below"])
+const SEVERE = new Set(["cert_missing", "cert_expired", "level_below", "client_unsuitable"])
 const MILD = new Set(["subcontractor", "sizes_unknown", "no_common_language", "cert_expiring_soon"])
 
 /** One matching warning, with the certificate name and date when it has them. */
 export function WarningBadge({ w, certificateNames }: { w: MatchWarning; certificateNames: Record<string, string> }) {
   const { t } = useT()
   const cert = w.certificateTypeId ? certificateNames[w.certificateTypeId] : null
-  const text = `${t(`teams.warn.${w.code}` as MessageKey)}${cert ? `: ${cert}` : ""}${w.date ? ` (${w.date})` : ""}`
+  const text = `${t(`teams.warn.${w.code}` as MessageKey)}${cert ? `: ${cert}` : ""}${w.date ? ` (${w.date})` : ""}${w.note ? `: ${w.note}` : ""}`
   const tone = SEVERE.has(w.code)
     ? "border-destructive/60 bg-destructive/15 text-destructive dark:border-destructive/60 dark:bg-destructive/20 dark:text-destructive"
     : MILD.has(w.code)

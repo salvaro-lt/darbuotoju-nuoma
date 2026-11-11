@@ -45,6 +45,7 @@ import { StaffingPermissions } from "@digimuza/staffing/manifest"
 import { TimesheetsNavItem } from "./timesheets/_components/timesheets-ui"
 import { useStaffingEnabled } from "./staffing/_components/staffing-ui"
 import { TeamsNavItem } from "./teams/_components/teams-nav"
+import { PlanningNavItem } from "./planning/_components/planning-ui"
 import { LogisticsNavItem } from "./logistics/_components/logistics-nav"
 import { ComplianceNavItem } from "./compliance/_components/compliance-ui"
 import { InvoicingNavGate } from "./invoicing/_components/invoicing-ui"
@@ -137,6 +138,7 @@ export function AppSidebar() {
                 {canProjects && <NavItem href="/app/staffing/projects" icon={<FolderKanban />} label={t("staffing.nav.projects")} />}
                 {canClients && <NavItem href="/app/staffing/clients" icon={<Building2 />} label={t("staffing.nav.clients")} />}
                 {/* staffing areas: one NavItem each below */}
+                <PlanningNavItem />
                 <TeamsNavItem />
                 <LogisticsNavItem />
                 <TimesheetsNavItem render={(p) => <NavItem {...p} />} />

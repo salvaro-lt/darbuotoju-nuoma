@@ -72,6 +72,7 @@ export const teamsLt = {
   "teams.detail.add": "+ Pridėti darbuotoją…",
   "teams.detail.driver": "Vairuotojas",
   "teams.detail.returning": "Dirbo šiam klientui",
+  "teams.detail.lastHere": "Paskutinį kartą",
   "teams.detail.unfit": "netinka",
   "teams.detail.score": "Balas",
   "teams.detail.notFree": "Nebėra laisvas visam laikotarpiui",
@@ -101,6 +102,7 @@ export const teamsLt = {
   "teams.warn.sizes_unknown": "Nežinomi aprangos dydžiai",
   "teams.warn.subcontractor": "Subrangovo",
   "teams.warn.no_common_language": "Nekalba pageidaujama kalba",
+  "teams.warn.client_unsuitable": "Netinkamas šiam klientui",
 } as const
 
 export const teamsEn: Record<keyof typeof teamsLt, string> = {
@@ -175,6 +177,7 @@ export const teamsEn: Record<keyof typeof teamsLt, string> = {
   "teams.detail.add": "+ Add a worker…",
   "teams.detail.driver": "Driver",
   "teams.detail.returning": "Worked for this client",
+  "teams.detail.lastHere": "Last time",
   "teams.detail.unfit": "unfit",
   "teams.detail.score": "Score",
   "teams.detail.notFree": "No longer free for the whole period",
@@ -204,4 +207,5 @@ export const teamsEn: Record<keyof typeof teamsLt, string> = {
   "teams.warn.sizes_unknown": "Clothing sizes unknown",
   "teams.warn.subcontractor": "Subcontractor",
   "teams.warn.no_common_language": "Doesn't speak a wanted language",
+  "teams.warn.client_unsuitable": "Unsuitable for this client",
 }

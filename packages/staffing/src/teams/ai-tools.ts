@@ -4,6 +4,7 @@ import { z } from "zod"
 import { loadCatalog } from "../operations"
 import { fold, isIsoDate } from "../pure"
 import { readerOf, type ClientId } from "../shared"
+import { describeRuleWarning } from "../planning/rules"
 import { describeGap } from "./matching"
 import { StaffingTeamsPermissions } from "./manifest"
 import { buildProposal } from "./operations"
@@ -75,6 +76,7 @@ export const teamsProposeTeamTool = defineAiTool({
           .map((r) => ({ name: r.name, level: r.level, fit: r.eligible, warnings: r.warnings.map((w) => w.code) })),
       })),
       missing: p.gaps.map((g) => describeGap(g, { trade: tradeName, certificate: certName }, "en")),
+      teamRules: p.ruleWarnings.map((w) => describeRuleWarning(w, "en")),
       ...(unknown.length ? { unknown } : {}),
       hint: "To save it as a request and confirm the team, use the Komandos page (/app/teams).",
     }

@@ -2,6 +2,7 @@ import { defineTable } from "convex/server"
 import { v } from "convex/values"
 import {
   ASSIGNMENT_STATUSES,
+  AVAILABILITY_KINDS,
   CERT_APPLIES_TO,
   CLIENT_KINDS,
   INVOICING_PERIODS,
@@ -21,6 +22,7 @@ export const invoicingPeriodValidator = lit(INVOICING_PERIODS)
 export const projectStatusValidator = lit(PROJECT_STATUSES)
 export const assignmentStatusValidator = lit(ASSIGNMENT_STATUSES)
 export const certAppliesToValidator = lit(CERT_APPLIES_TO)
+export const availabilityKindValidator = lit(AVAILABILITY_KINDS)
 
 /** A worker's trade and how well they master it. */
 export const workerTradeValidator = v.object({ tradeId: v.id("staffing_trades"), level: tradeLevelValidator })
@@ -182,6 +184,25 @@ export const staffingTables = {
     .index("by_worker", ["workerId", "startDate"])
     .index("by_project", ["projectId", "startDate"])
     .index("by_status", ["status", "startDate"]),
+
+  /**
+   * Rotation: when a worker is away or not yet available (`rest` home after a
+   * project, `unavailable`, `available_from`). `listAvailableWorkers` skips
+   * workers blocked by one of these on any day of the asked period.
+   */
+  staffing_workerAvailability: defineTable({
+    workerId: v.id("staffing_workers"),
+    kind: availabilityKindValidator,
+    /** First day away; for `available_from`, the first day the worker can work. */
+    startDate: v.string(),
+    /** Last day away (inclusive); missing: until further notice. Unused for `available_from`. */
+    endDate: v.optional(v.string()),
+    note: v.string(),
+    createdBy: v.string(),
+    updatedAt: v.number(),
+  })
+    .index("by_worker", ["workerId", "startDate"])
+    .index("by_kind", ["kind", "startDate"]),
 }
 
 export type StaffingTableName = keyof typeof staffingTables

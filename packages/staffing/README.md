@@ -47,6 +47,7 @@ Changing a meaning here breaks the areas: add, don't change.
 | `staffing_clients` | `name`, `code` (unique), `kind: client\|subcontractor\|both`, `country`, `vatCode?`, `companyCode?`, `address?`, `contacts[]`, `defaultRates[{tradeId, hourlyRateCents}]`, `currency`, `paymentTermsDays`, `invoicingPeriod: weekly\|biweekly\|monthly`, `notes` | `by_code`, `by_name` |
 | `staffing_projects` | `clientId`, `name`, `code` (unique), `country`, `city`, `siteAddress?`, `startDate`, `endDate?`, `status: draft\|active\|finished\|cancelled`, `coordinatorUserId?` (system-core user ID), `rates[]` (sell), `currency`, `notes` | `by_code`, `by_status[status,startDate]`, `by_client[clientId,startDate]` |
 | `staffing_assignments` | `projectId`, `workerId`, `tradeId`, `startDate`, `endDate?`, `status: proposed\|confirmed\|active\|ended\|cancelled`, `isDriver`, `notes`, `createdBy` | `by_worker[workerId,startDate]`, `by_project[projectId,startDate]`, `by_status[status,startDate]` |
+| `staffing_workerAvailability` | `workerId`, `kind: rest\|unavailable\|available_from`, `startDate`, `endDate?` (none = until further notice; unused for `available_from`), `note`, `createdBy` | `by_worker[workerId,startDate]`, `by_kind[kind,startDate]` |
 
 Rules the base enforces: a `confirmed`/`active` assignment never overlaps another `confirmed`/`active` one of the
 same worker (`BLOCKING_ASSIGNMENT_STATUSES`); new assignments need an active worker who has the trade and a `draft`
@@ -61,7 +62,7 @@ first (`system.requirePermission(ctx, YourPermissions.x, opts(args))`), then cal
 | Function | Returns |
 | - | - |
 | `getWorkerCard(ctx, workerId, { onDate? })` | `WorkerCard \| null`: worker summary + notes/sizes/licence, `certificates` (status on `onDate`, default today), `missingMandatory`, `assignments` (not cancelled), `current`, `next` |
-| `listAvailableWorkers(ctx, { from, to?, trades?, minLevel?, requireValidCertsOn?, requiredCertificateTypeIds?, source?, ignoreAssignmentIds? })` | `AvailableWorker[]`: active workers with no confirmed/active assignment overlapping `[from, to]` (proposed don't block), with one of `trades` at `minLevel`+; with `requireValidCertsOn`, only those whose mandatory + required certificate types are usable that day. Each has `matchingTrades` and `requiredCertStatus` |
+| `listAvailableWorkers(ctx, { from, to?, trades?, minLevel?, requireValidCertsOn?, requiredCertificateTypeIds?, source?, ignoreAssignmentIds? })` | `AvailableWorker[]`: active workers with no confirmed/active assignment overlapping `[from, to]` (proposed don't block) and not away on rest / unavailable / before `available_from` on any day of it, with one of `trades` at `minLevel`+; with `requireValidCertsOn`, only those whose mandatory + required certificate types are usable that day. Each has `matchingTrades` and `requiredCertStatus` |
 | `projectTeam(ctx, projectId, onDate?)` | `TeamMember[]` (assignment view + `worker: WorkerSummary`), not cancelled; with `onDate`, only those covering it |
 | `workerSummaries(ctx, workerDocs, { onDate?, requiredTypeIds?, catalog? })` | summaries with trades and `certStatus` |
 | `workerAssignments(ctx, workerId)` / `workerCertificates(ctx, workerId)` | raw docs |
@@ -99,6 +100,20 @@ Catalog: `listTrades`, `createTrade`, `updateTrade`, `deleteTrade`, `listCertifi
 `createProject`, `updateProject`, `deleteProject`. Assignments: `listAssignments`, `createAssignment`,
 `updateAssignment`, `deleteAssignment`. Dev: `_seedDemo` (internal). Every write audits `staffing.<object>.<verb>`
 and returns `operationId`. Catalog reads need `staffing:worker:read`.
+
+## Area: planning (`staffing-planning`, DIG-109)
+
+Two-level planning: projects, and every worker as a timeline of their own (`src/planning/`, UI `/app/planning`).
+Worker rotation lives in the base table `staffing_workerAvailability` (pure `availabilityBlocks`, operations
+`blockingAvailability`, `unavailableWorkerIds`, `workerAvailability`); the area adds `staffing_planning_capacities`
+(subcontractor capacity per trade with validity), `staffing_planning_clientRules` (team composition rules per client)
+and `staffing_planning_feedback` (`suitable` / `unsuitable` per worker and client). Pure, unit-tested:
+`planning/rules` (`evaluateTeamRules`, `applyTeamRules`: drivers per N people, English per team or flat, shared
+language, housing hint) and `planning/pure` (`weeksFrom`, `weekCell`, `workerStatusOn`, `supplyDemand`,
+`capacityAnswer`, `capacityReply`). The teams engine uses all of it: unsuitable workers get the blocking warning
+`client_unsuitable`, the proposal keeps the client's rules, "Ko trūksta" lists subcontractor capacity. AI tool
+`staffing-planning.capacity`. Demo: `npx convex run planning:_seedDemo` (after `staffing:_seedDemo` and
+`teams:_seedDemo`).
 
 ## How to add an area
 

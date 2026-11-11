@@ -24,6 +24,7 @@ import type { MessageKey } from "@/lib/i18n/messages"
 import { AssignmentStatusBadge, CertBadge, ConfirmDelete, Detail, Disabled, NativeSelect, Period, projectHref, useCertificateTypes, useStaffingEnabled, useTradeName } from "./staffing-ui"
 import { WorkerFormDialog } from "./worker-form"
 import { WorkerPackageSends } from "../../compliance/_components/package-send"
+import { WorkerPlanningPanel } from "../../planning/_components/worker-planning-panel"
 
 export function WorkerCardView({ workerId }: { workerId: string }) {
   const { t } = useT()
@@ -89,6 +90,8 @@ export function WorkerCardView({ workerId }: { workerId: string }) {
           </CardContent>
         </Card>
       </div>
+
+      <WorkerPlanningPanel workerId={w.id} />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
         <Card className="py-4">

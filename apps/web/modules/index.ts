@@ -17,6 +17,7 @@ import { staffingCompliance } from "@digimuza/staffing/compliance/manifest"
 import { staffingInvoicing } from "@digimuza/staffing/invoicing/manifest"
 import { mcp, McpPermissions } from "@digimuza/system-core/mcp"
 import { staffingLogistics } from "@digimuza/staffing/logistics/manifest"
+import { staffingPlanning } from "@digimuza/staffing/planning/manifest"
 
 // `mcp` (ChatGPT / Claude over MCP) needs `ai`. `automations`: email / form → AI → insert.
 // `ingest` ("Gavimas"): Resend integration and inboxes; email automations read its inboxes.
@@ -39,6 +40,7 @@ export const appModules = [
   staffingTimesheets,
   staffingCompliance,
   staffingInvoicing,
+  staffingPlanning,
 ]
 export { n8n, N8nPermissions, N8nSubroles, type N8nPermission }
 export { staffing, StaffingPermissions, ai, AiPermissions, automations, AutomationsPermissions, crm, CrmPermissions, documents, DocumentsPermissions, finance, FinancePermissions, ingest, IngestPermissions, mcp, McpPermissions }

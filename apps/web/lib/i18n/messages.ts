@@ -13,6 +13,7 @@ import { logisticsEn, logisticsLt } from "./logistics-messages"
 import { timesheetsEn, timesheetsLt } from "./timesheets-messages"
 import { complianceEn, complianceLt } from "./compliance-messages"
 import { invoicingEn, invoicingLt } from "./invoicing-messages"
+import { planningEn, planningLt } from "./planning-messages"
 
 export const LOCALES = ["lt", "en"] as const
 export type Locale = (typeof LOCALES)[number]
@@ -699,6 +700,7 @@ const lt = {
   ...timesheetsLt,
   ...complianceLt,
   ...invoicingLt,
+  ...planningLt,
   ...documentsSigningLt,
 } as const
 
@@ -1384,6 +1386,7 @@ const en: Record<MessageKey, string> = {
   ...timesheetsEn,
   ...complianceEn,
   ...invoicingEn,
+  ...planningEn,
   ...documentsSigningEn,
 }
 
