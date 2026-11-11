@@ -2,6 +2,7 @@ import { crmTables } from "@digimuza/crm"
 import { documentsTables } from "@digimuza/documents"
 import { staffingTables } from "@digimuza/staffing/tables"
 import { teamsTables } from "@digimuza/staffing"
+import { logisticsTables } from "@digimuza/staffing/logistics/tables"
 import { aiTables } from "@digimuza/system-core/ai"
 import { automationsTables } from "@digimuza/system-core/automations"
 import { systemTables } from "@digimuza/system-core/convex"
@@ -35,4 +36,5 @@ export default defineSchema({
   ...staffingTables,
   // Staffing areas: one line each below (...timesheetsTables, ...).
   ...teamsTables,
+  ...logisticsTables,
 })

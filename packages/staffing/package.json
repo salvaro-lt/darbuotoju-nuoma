@@ -11,7 +11,10 @@
     "./pure": "./src/pure.ts",
     "./tables": "./src/tables.ts",
     "./teams/manifest": "./src/teams/manifest.ts",
-    "./teams/matching": "./src/teams/matching.ts"
+    "./teams/matching": "./src/teams/matching.ts",
+    "./logistics/manifest": "./src/logistics/manifest.ts",
+    "./logistics/pure": "./src/logistics/pure.ts",
+    "./logistics/tables": "./src/logistics/tables.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
