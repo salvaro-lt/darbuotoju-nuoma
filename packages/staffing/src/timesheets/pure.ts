@@ -61,7 +61,8 @@ export function hoursProblem(regular: number, overtime: number): string | null {
 /** A day from a spreadsheet or text cell: ISO, `dd.mm.yyyy`, `dd/mm/yyyy`, `dd.mm.` (with `year`), Excel serials, Dates. */
 export function parseDateCell(value: unknown, year?: number): string | null {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    // Spreadsheet readers give local midnight: keep the local calendar day.
+    // XLSX readers give UTC midnight; others local midnight. Keep that calendar day.
+    if (value.getUTCHours() === 0 && value.getUTCMinutes() === 0) return value.toISOString().slice(0, 10)
     return new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate())).toISOString().slice(0, 10)
   }
   if (typeof value === "number" && value > 30000 && value < 80000) return addDays("1899-12-30", Math.floor(value))
