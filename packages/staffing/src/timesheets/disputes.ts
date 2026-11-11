@@ -12,7 +12,7 @@ import { actorArgs, actorId, checkRange, cleanDate, cleanText, fail, opts, type 
 import { StaffingTimesheetsPermissions as P } from "./manifest"
 import { tsReader } from "./operations"
 import { compareSources, disputeAmountCents, disputeTotals, isDisagreement, isOpenDispute, roundHours, type DisputeKind, type DisputeStatus, type DisputeTotals } from "./pure"
-import { clientDays, RECORDABLE, tsWriter } from "./reads"
+import { clientDays, projectWorkers, RECORDABLE, tsWriter } from "./reads"
 import { disputeKindValidator, disputeStatusValidator } from "./tables"
 
 export interface DisputeLine {
@@ -136,6 +136,15 @@ export function defineTimesheetsDisputes(system: ConvexSystem) {
   const getDispute = (ctx: DbCtxLike, id: string) => tsReader(ctx).get("staffing_timesheets_disputes", id as never)
 
   return {
+    /** Every worker ever on a project (not cancelled), for the "new dispute" picker. */
+    listProjectWorkers: queryGeneric({
+      args: { ...actorArgs, projectId: v.id("staffing_projects") },
+      handler: async (ctx, a): Promise<{ id: string; name: string }[]> => {
+        await system.requirePermission(ctx, P.read, opts(a))
+        return (await projectWorkers(ctx, a.projectId)).map((w) => ({ id: w._id, name: `${w.lastName} ${w.firstName}` })).sort((x, y) => x.name.localeCompare(y.name))
+      },
+    }),
+
     /** Dispute cases (newest first) and the totals: "Pakibę" = open + waiting for the client. */
     listDisputes: queryGeneric({
       args: { ...actorArgs, status: v.optional(v.union(v.literal("open"), v.literal("closed"), v.literal("all"))), projectId: v.optional(v.id("staffing_projects")) },

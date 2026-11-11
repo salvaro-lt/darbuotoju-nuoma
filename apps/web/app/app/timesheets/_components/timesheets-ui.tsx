@@ -22,6 +22,19 @@ export function TimesheetsNavItem({ render }: { render: (p: { href: string; icon
 export const timesheetsHref = "/app/timesheets"
 export const projectTimesheetHref = (projectId: string, week?: string) => `/app/timesheets/${projectId}${week ? `?week=${week}` : ""}`
 export const sheetHref = (sheetId: string) => `/app/timesheets/sheets/${sheetId}`
+export const disputesHref = "/app/timesheets/disputes"
+export const disputeHref = (id: string) => `/app/timesheets/disputes/${id}`
+export const qrListHref = (projectId: string) => `/print/timesheets/links/${projectId}`
+/** A worker's personal link on this site. */
+export const workerLinkUrl = (token: string) => `${typeof window === "undefined" ? "" : window.location.origin}/h/${token}`
+
+/** EUR amounts in the UI language; whole euros for totals. */
+export function useMoney() {
+  const { locale } = useT()
+  const tag = locale === "lt" ? "lt-LT" : "en-GB"
+  return (cents: number, opts: { whole?: boolean; currency?: string } = {}) =>
+    new Intl.NumberFormat(tag, { style: "currency", currency: opts.currency ?? "EUR", ...(opts.whole ? { maximumFractionDigits: 0, minimumFractionDigits: 0 } : {}) }).format(cents / 100)
+}
 
 /** Fills `{name}` placeholders. */
 export function fmt(s: string, vars: Record<string, string | number>): string {

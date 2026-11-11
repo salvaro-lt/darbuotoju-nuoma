@@ -43,6 +43,7 @@ export const {
   sendWorkerLink,
   threeWayWeek,
   // DIG-111: disputes
+  listProjectWorkers,
   listDisputes,
   getDispute,
   createDispute,

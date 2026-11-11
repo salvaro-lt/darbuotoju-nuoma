@@ -27,6 +27,8 @@ import type { Id } from "@/convex/_generated/dataModel"
 import { useT } from "@/lib/i18n/client"
 import { useTradeName } from "../../staffing/_components/staffing-ui"
 import { ClientSheets } from "./client-sheets"
+import { ThreeSources } from "./three-sources"
+import { WorkerLinks } from "./worker-links"
 import { fmt, parseHoursInput, timesheetsHref, TimesheetsDisabled, useDateFormat, useHours, useTimesheetsEnabled } from "./timesheets-ui"
 
 export function ProjectTimesheet({ projectId }: { projectId: string }) {
@@ -36,7 +38,8 @@ export function ProjectTimesheet({ projectId }: { projectId: string }) {
   const router = useRouter()
   const pathname = usePathname()
   const week = weekStartOf(params.get("week") || todayIso())
-  const tab = params.get("tab") === "client" ? "client" : "hours"
+  const tabParam = params.get("tab")
+  const tab = tabParam === "client" || tabParam === "sources" || tabParam === "links" ? tabParam : "hours"
   const grid = useQuery(api.timesheets.weekGrid, enabled ? { projectId: projectId as Id<"staffing_projects">, weekStart: week } : "skip")
   const go = (q: Record<string, string | null>) => {
     const next = new URLSearchParams(params)
@@ -61,10 +64,12 @@ export function ProjectTimesheet({ projectId }: { projectId: string }) {
       ) : (
         <Skeleton className="h-16 w-80" />
       )}
-      <Tabs value={tab} onValueChange={(v) => go({ tab: v === "client" ? "client" : null })}>
+      <Tabs value={tab} onValueChange={(v) => go({ tab: v === "hours" ? null : v })}>
         <TabsList>
           <TabsTrigger value="hours">{t("timesheets.grid.hours")}</TabsTrigger>
           <TabsTrigger value="client">{t("timesheets.grid.clientSheets")}</TabsTrigger>
+          <TabsTrigger value="sources">{t("timesheets.grid.sources")}</TabsTrigger>
+          <TabsTrigger value="links">{t("timesheets.grid.links")}</TabsTrigger>
         </TabsList>
         <TabsContent value="hours" className="pt-3">
           <WeekNav week={week} onWeek={(w) => go({ week: w === weekStartOf(todayIso()) ? null : w })} />
@@ -73,12 +78,19 @@ export function ProjectTimesheet({ projectId }: { projectId: string }) {
         <TabsContent value="client" className="pt-3">
           <ClientSheets projectId={projectId} />
         </TabsContent>
+        <TabsContent value="sources" className="pt-3">
+          <WeekNav week={week} onWeek={(w) => go({ week: w === weekStartOf(todayIso()) ? null : w })} />
+          <ThreeSources projectId={projectId} week={week} />
+        </TabsContent>
+        <TabsContent value="links" className="pt-3">
+          <WorkerLinks projectId={projectId} />
+        </TabsContent>
       </Tabs>
     </div>
   )
 }
 
-function WeekNav({ week, onWeek }: { week: string; onWeek: (w: string) => void }) {
+export function WeekNav({ week, onWeek }: { week: string; onWeek: (w: string) => void }) {
   const { t } = useT()
   const d = useDateFormat()
   const current = weekStartOf(todayIso())

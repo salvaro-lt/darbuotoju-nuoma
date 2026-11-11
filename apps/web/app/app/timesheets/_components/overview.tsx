@@ -17,6 +17,8 @@ import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { useT } from "@/lib/i18n/client"
 import type { MessageKey } from "@/lib/i18n/messages"
+import { PendingDisputesButton } from "./disputes"
+import { EmailIntake } from "./email-intake"
 import { fmt, projectTimesheetHref, sheetHref, TimesheetsDisabled, useDateFormat, useHours, useTimesheetsEnabled } from "./timesheets-ui"
 
 export function TimesheetsOverview() {
@@ -28,14 +30,17 @@ export function TimesheetsOverview() {
   if (!enabled) return <TimesheetsDisabled />
   const late = projects?.filter((p) => p.due.late) ?? []
   const actions = (
-    <Can permission={P.export}>
-      <Button size="sm" variant="outline" asChild>
-        <Link href="/app/timesheets/subcontractors">
-          <FileSpreadsheet />
-          {t("timesheets.overview.subcontractors")}
-        </Link>
-      </Button>
-    </Can>
+    <>
+      <PendingDisputesButton />
+      <Can permission={P.export}>
+        <Button size="sm" variant="outline" asChild>
+          <Link href="/app/timesheets/subcontractors">
+            <FileSpreadsheet />
+            {t("timesheets.overview.subcontractors")}
+          </Link>
+        </Button>
+      </Can>
+    </>
   )
   return (
     <div className="space-y-6">
@@ -67,6 +72,8 @@ export function TimesheetsOverview() {
           )}
         </CardContent>
       </Card>
+
+      <EmailIntake />
 
       <section>
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">{t("timesheets.overview.projects")}</h2>
