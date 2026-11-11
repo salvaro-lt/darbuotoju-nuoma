@@ -28,4 +28,5 @@ export { staffingTools, staffingListWorkersTool, staffingGetWorkerTool, staffing
 // Each area lives in src/<area>/ and re-exports its manifest, tables, functions
 // and tools here, e.g.:
 //   export * from "./timesheets"
+export * from "./teams"
 export * from "./compliance"

@@ -9,7 +9,7 @@ import { defineAutomationsAiTools } from "@digimuza/system-core/automations"
 import { defineIngestAiTools } from "@digimuza/system-core/ingest"
 import { financeTools } from "@digimuza/system-core/finance"
 import { documentsTools } from "@digimuza/documents"
-import { staffingTools } from "@digimuza/staffing"
+import { staffingTools, teamsTools } from "@digimuza/staffing"
 import { complianceTools } from "@digimuza/staffing"
 import { automationTargets, ingestConsumers } from "./automationsConfig"
 
@@ -48,7 +48,7 @@ export const assistant = defineAiAgent({
     "Keep answers short and clear. Amounts are in major units (e.g. 12.50 EUR).",
     AUTOMATION_INSTRUCTIONS,
   ].join("\n"),
-  tools: [...financeTools, ...documentsTools, ...staffingTools, ...complianceTools, ...automationTools, ...ingestTools, ...displayTools],
+  tools: [...financeTools, ...documentsTools, ...staffingTools, ...teamsTools, ...complianceTools, ...automationTools, ...ingestTools, ...displayTools],
 })
 
 export const aiOptions: AiOptions = {
