@@ -9,7 +9,9 @@
     ".": "./src/index.ts",
     "./manifest": "./src/manifest.ts",
     "./pure": "./src/pure.ts",
-    "./tables": "./src/tables.ts"
+    "./tables": "./src/tables.ts",
+    "./invoicing/manifest": "./src/invoicing/manifest.ts",
+    "./invoicing/pure": "./src/invoicing/pure.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
