@@ -21,9 +21,12 @@ import {
   type InvoiceStatus,
   type RateTerms,
 } from "./pure"
+import { approvedHours } from "../timesheets/operations"
+import type { timesheetsTables } from "../timesheets/tables"
 import type { invoicingTables } from "./tables"
 
-export type InvoicingDataModel = DataModelOf<typeof staffingTables & typeof invoicingTables>
+/** The invoicing area reads the timesheets area's tables (approved hours, client timesheets) too. */
+export type InvoicingDataModel = DataModelOf<typeof staffingTables & typeof invoicingTables & typeof timesheetsTables>
 export const invReader = (ctx: DbCtxLike) => ctx.db as GenericDatabaseReader<InvoicingDataModel>
 export const invWriter = (ctx: DbCtxLike) => ctx.db as GenericDatabaseWriter<InvoicingDataModel>
 
@@ -38,24 +41,33 @@ export interface BillableHours extends BillableHoursRow {
   workerId: string
   date: string
   source: HoursSource
+  /** The correction row (`staffing_invoicing_hours`) for manual hours; null for timesheets. */
+  id: string | null
+  note: string | null
 }
 
 /**
  * Billable hours of a project in `[from, to]` (inclusive). The one place
- * invoicing reads hours from.
- *
- * TODO(after merge with the timesheets area, DIG-99): read the timesheets
- * area's approved hours (its `approvedHours(ctx, { projectId, from, to })`)
- * instead, and add only `source: "manual"` rows from `staffing_invoicing_hours`
- * on top (corrections). Until then the demo seed and the manual form fill
- * `staffing_invoicing_hours`.
+ * invoicing reads hours from: the timesheets area's approved weeks
+ * (`approvedHours`; weekend days count as weekend hours) plus manual
+ * corrections (`staffing_invoicing_hours`, `source: "manual"`, e.g. a day the
+ * client accepted after the week was locked).
  */
 export async function billableHours(ctx: DbCtxLike, q: { projectId: ProjectId; from: string; to: string }): Promise<BillableHours[]> {
-  const rows = await invReader(ctx)
+  const out: BillableHours[] = []
+  for (const r of await approvedHours(ctx, q)) {
+    const base = { projectId: q.projectId, tradeId: r.tradeId, workerId: r.workerId, date: r.date, source: "timesheets" as const, id: null, note: null }
+    out.push(r.weekend ? { ...base, regular: 0, overtime: 0, weekend: r.regular + r.overtime } : { ...base, regular: r.regular, overtime: r.overtime, weekend: 0 })
+  }
+  const manual = await invReader(ctx)
     .query("staffing_invoicing_hours")
     .withIndex("by_project_date", (i) => i.eq("projectId", q.projectId).gte("date", q.from).lte("date", q.to))
     .collect()
-  return rows.map((r) => ({ projectId: r.projectId, tradeId: r.tradeId, workerId: r.workerId, date: r.date, regular: r.regular, overtime: r.overtime, weekend: r.weekend, source: r.source }))
+  for (const r of manual) {
+    if (r.source !== "manual") continue
+    out.push({ projectId: r.projectId, tradeId: r.tradeId, workerId: r.workerId, date: r.date, regular: r.regular, overtime: r.overtime, weekend: r.weekend, source: "manual", id: r._id, note: r.note ?? null })
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date))
 }
 
 // ---------------------------------------------------------------- rates and surcharges
@@ -93,7 +105,7 @@ export async function rateTermsResolver(ctx: DbCtxLike, client: ClientDoc, proje
 }
 
 /** Value of hours at the sell rates (earned revenue), for profitability. */
-export function hoursValueCents(h: BillableHoursRow, terms: RateTerms): number {
+export function hoursValueCents(h: Pick<BillableHoursRow, "regular" | "overtime" | "weekend">, terms: RateTerms): number {
   if (terms.rateCents === null) return 0
   return Math.round(h.regular * terms.rateCents + h.overtime * unitPrice(terms.rateCents, terms.overtimePct) + h.weekend * unitPrice(terms.rateCents, terms.weekendPct))
 }

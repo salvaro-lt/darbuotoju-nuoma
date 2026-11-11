@@ -1,6 +1,18 @@
 import { describe, expect, test } from "vitest"
 import {
   agingBucket,
+  allocateCents,
+  billingPeriodsBetween,
+  chainStatus,
+  defaultWageCents,
+  emailAddressOf,
+  matchSupplier,
+  parseInvoiceEmail,
+  parseMoneyCents,
+  wageCostCents,
+  workerProfitability,
+  type ChainFacts,
+  type WorkerDayValue,
   billingPeriodOf,
   dueReminderStage,
   formatInvoiceNumber,
@@ -111,6 +123,120 @@ describe("invoicing: profitability and export", () => {
     expect(row).toContain(";DN;2026-0001;")
     expect(row).toContain('"Demo; Shipyard"')
     expect(row).toContain(";7,5;47,00;352,50;0;0,00;352,50;EUR;")
+  })
+})
+
+describe("invoicing: the closed process (chain)", () => {
+  const base: ChainFacts = {
+    period: { from: "2026-08-01", to: "2026-08-31" },
+    today: "2026-11-11",
+    daysWithHours: 21,
+    weeksWithHours: 5,
+    weeksApproved: 5,
+    daysCovered: 21,
+    sheets: 1,
+    openMismatches: 0,
+    invoice: null,
+    approvedValueCents: 4_000_000,
+    invoicedCents: 0,
+  }
+
+  test("the forgotten period: everything up to reconciliation done, no invoice → broken at 'drafted', alert, all of it at risk", () => {
+    const r = chainStatus(base, 7)
+    expect(r.steps).toEqual({ hours: "done", weekApproved: "done", clientSheet: "done", reconciled: "done", drafted: "missing", approved: "missing", sent: "missing", paid: "missing" })
+    expect(r.brokenAt).toBe("drafted")
+    expect(r).toMatchObject({ closed: false, ended: true, daysSinceEnd: 72, alert: true, atRiskCents: 4_000_000 })
+  })
+
+  test("a paid invoice closes the period; a draft does not stop the alert; partial steps", () => {
+    const paid = chainStatus({ ...base, invoice: { status: "paid", sent: true }, invoicedCents: 4_000_000 })
+    expect(paid).toMatchObject({ closed: true, brokenAt: null, alert: false, atRiskCents: 0 })
+    const draft = chainStatus({ ...base, invoice: { status: "draft", sent: false } })
+    expect(draft).toMatchObject({ brokenAt: "approved", alert: true })
+    const late = chainStatus({ ...base, weeksApproved: 3, daysCovered: 10, openMismatches: 2 })
+    expect(late.steps).toMatchObject({ weekApproved: "partial", clientSheet: "partial", reconciled: "partial" })
+    expect(late.brokenAt).toBe("weekApproved")
+    const partlyPaid = chainStatus({ ...base, invoice: { status: "partially_paid", sent: true }, invoicedCents: 3_900_000 })
+    expect(partlyPaid).toMatchObject({ brokenAt: "paid", atRiskCents: 100_000, alert: false })
+    expect(partlyPaid.steps.paid).toBe("partial")
+  })
+
+  test("no alert within the grace days or while the period runs; empty periods are not broken", () => {
+    expect(chainStatus({ ...base, today: "2026-09-05" }, 7).alert).toBe(false)
+    expect(chainStatus({ ...base, today: "2026-09-09" }, 7).alert).toBe(true)
+    const running = chainStatus({ ...base, today: "2026-08-20" })
+    expect(running).toMatchObject({ ended: false, alert: false })
+    const empty = chainStatus({ ...base, daysWithHours: 0, weeksWithHours: 0, weeksApproved: 0, daysCovered: 0, sheets: 0, approvedValueCents: 0 })
+    expect(empty).toMatchObject({ empty: true, closed: false, brokenAt: null, alert: false })
+    expect(Object.values(empty.steps).every((s) => s === "na")).toBe(true)
+  })
+
+  test("billing periods between two dates", () => {
+    expect(billingPeriodsBetween("monthly", "2026-07-14", "2026-09-02").map((p) => p.from)).toEqual(["2026-07-01", "2026-08-01", "2026-09-01"])
+    expect(billingPeriodsBetween("weekly", "2026-11-04", "2026-11-11")).toEqual([
+      { from: "2026-11-02", to: "2026-11-08" },
+      { from: "2026-11-09", to: "2026-11-15" },
+    ])
+  })
+})
+
+describe("invoicing: profitability per worker", () => {
+  test("wage cost: overtime ×1.5, weekend ×2; trade defaults", () => {
+    expect(wageCostCents({ regular: 8, overtime: 2, weekend: 0 }, 2500)).toBe(8 * 2500 + 2 * 3750)
+    expect(wageCostCents({ regular: 0, overtime: 0, weekend: 6 }, 2500)).toBe(30000)
+    expect(defaultWageCents("WELD-MAG")).toBe(2600)
+    expect(defaultWageCents("UNKNOWN")).toBe(defaultWageCents(null))
+  })
+
+  test("allocation by weights adds up exactly", () => {
+    const a = allocateCents(1000, new Map([["a", 1], ["b", 1], ["c", 1]]))
+    expect([...a.values()].reduce((s, x) => s + x, 0)).toBe(1000)
+    expect(a.get("a")).toBe(334)
+    expect(allocateCents(500, new Map([["a", 0]])).get("a")).toBe(0)
+  })
+
+  test("billed value − wages − housing/transport shared by days worked on each project", () => {
+    const days: WorkerDayValue[] = [
+      // Jonas: 2 days on P1. Petras: 1 day on P1 (two rows that day), 1 day on P2.
+      { workerId: "jonas", projectId: "p1", date: "2026-10-05", hours: 8, valueCents: 400_00, wageCents: 200_00 },
+      { workerId: "jonas", projectId: "p1", date: "2026-10-06", hours: 8, valueCents: 400_00, wageCents: 200_00 },
+      { workerId: "petras", projectId: "p1", date: "2026-10-05", hours: 6, valueCents: 300_00, wageCents: 150_00 },
+      { workerId: "petras", projectId: "p1", date: "2026-10-05", hours: 2, valueCents: 100_00, wageCents: 75_00 },
+      { workerId: "petras", projectId: "p2", date: "2026-10-06", hours: 8, valueCents: 500_00, wageCents: 300_00 },
+    ]
+    // P1 housing and transport 300 € over 3 worker-days; P2 nothing.
+    const rows = workerProfitability(days, new Map([["p1", 300_00]]))
+    const jonas = rows.find((r) => r.workerId === "jonas")!
+    const petras = rows.find((r) => r.workerId === "petras")!
+    expect(jonas).toMatchObject({ days: 2, hours: 16, billedCents: 800_00, wageCents: 400_00, overheadCents: 200_00, marginCents: 200_00, marginPct: 25 })
+    expect(petras).toMatchObject({ days: 2, hours: 16, billedCents: 900_00, wageCents: 525_00, overheadCents: 100_00, marginCents: 275_00, projectIds: ["p1", "p2"] })
+    // Worst margin first; the shares add up to the project's costs.
+    expect(rows[0]!.workerId).toBe("jonas")
+    expect(jonas.overheadCents + petras.overheadCents).toBe(300_00)
+  })
+})
+
+describe("invoicing: purchase invoices from e-mail", () => {
+  const suppliers = [
+    { name: "Hotel", emails: ["rechnung@hotel.example"], active: true },
+    { name: "Fuel", emails: ["@fuel.example"], active: true },
+    { name: "Old", emails: ["old@old.example"], active: false },
+  ]
+
+  test("known senders by address or domain; inactive and unknown senders are not known", () => {
+    expect(matchSupplier("Hotel <Rechnung@Hotel.example>", suppliers)?.name).toBe("Hotel")
+    expect(matchSupplier("e-saskaitos@fuel.example", suppliers)?.name).toBe("Fuel")
+    expect(matchSupplier("old@old.example", suppliers)).toBeNull()
+    expect(matchSupplier("someone@fuel.example.evil.com", suppliers)).toBeNull()
+    expect(emailAddressOf("A B <a@b.lt>")).toBe("a@b.lt")
+  })
+
+  test("number, total and date read from the subject and text", () => {
+    expect(parseInvoiceEmail("Sąskaita faktūra AN-55821", "Mokėti: 2 238,50 EUR\nData 2026-11-07")).toEqual({ number: "AN-55821", totalCents: 223850, issueDate: "2026-11-07" })
+    expect(parseInvoiceEmail("Rechnung HB-2026-1031", "Gesamtbetrag: 3.720,00 €")).toMatchObject({ number: "HB-2026-1031", totalCents: 372000 })
+    expect(parseInvoiceEmail("Invoice INV-77", "Total 1,234.56")).toMatchObject({ number: "INV-77", totalCents: 123456 })
+    expect(parseInvoiceEmail("Labas", "be sumos")).toEqual({ number: null, totalCents: null, issueDate: null })
+    expect(parseMoneyCents("1 210")).toBe(121000)
   })
 })
 
