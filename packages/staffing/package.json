@@ -15,6 +15,7 @@
     "./logistics/manifest": "./src/logistics/manifest.ts",
     "./logistics/pure": "./src/logistics/pure.ts",
     "./logistics/tables": "./src/logistics/tables.ts",
+    "./logistics/housing": "./src/logistics/housing.ts",
     "./timesheets/manifest": "./src/timesheets/manifest.ts",
     "./timesheets/pure": "./src/timesheets/pure.ts",
     "./timesheets/tables": "./src/timesheets/tables.ts",

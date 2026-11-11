@@ -92,6 +92,8 @@ export interface PlanInput {
   vehicles: readonly PlanVehicle[]
   allocations: readonly PlanAllocation[]
   travelLegs: readonly PlanTravelLeg[]
+  /** Beds of members in the regional housing pool (stays in pool flats): they count as beds and silence "no bed". */
+  pooled?: readonly { workerId: string; startDate: string; endDate: string | null }[]
 }
 
 export interface Warning {
@@ -199,13 +201,17 @@ export function computePlan(input: PlanInput): Plan {
     const people = onSite(day)
     const check = day >= checkFrom
     const accs = input.accommodations.filter((a) => covers(a, day))
-    const beds = accs.reduce((s, a) => s + a.beds, 0)
+    const hasProjectBed = (w: string) => {
+      const accId = alloc.get(w)?.accommodationId
+      return Boolean(accId && accs.some((a) => a.id === accId))
+    }
+    const pooledToday = new Set(people.filter((w) => !hasProjectBed(w) && (input.pooled ?? []).some((p) => p.workerId === w && covers(p, day))))
+    const beds = accs.reduce((s, a) => s + a.beds, 0) + pooledToday.size
     planDays.push({ date: day, people: people.length, beds })
     if (check && people.length > beds) shortDays.push({ day, people: people.length, beds })
 
     for (const w of people) {
-      const accId = alloc.get(w)?.accommodationId
-      if (!accId || !accs.some((a) => a.id === accId)) {
+      if (!hasProjectBed(w) && !pooledToday.has(w)) {
         if (check) noBed.set(w, [...(noBed.get(w) ?? []), day])
       }
     }

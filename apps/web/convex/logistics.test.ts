@@ -127,3 +127,72 @@ describe("logistics: demo plan", () => {
     expect((sent[0]!.body.lines as string[]).some((l) => l.includes("Trūksta lovų"))).toBe(true)
   })
 })
+
+describe("logistics: housing pool (DIG-110)", () => {
+  test("guard: viewer reads but can't place people or log fuel; module off denies; seed refuses in production", async () => {
+    const t = setup()
+    const { superUser } = await logisticsApp(t)
+    await t.mutation(internal.logistics._seedHousing, {})
+    expect(await codeOf(t.query(api.logistics.housingOverview, {}))).toBe("UNAUTHENTICATED")
+    const alice = await inviteWithRole(t, superUser, ["staffing-logistics:viewer"])
+    const view = await alice.query(api.logistics.housingOverview, {})
+    const flat = view.flats[0]!
+    const worker = view.workers[0]!
+    expect(await codeOf(alice.mutation(api.logistics.saveStay, { accommodationId: flat.id as Id<"staffing_logistics_accommodations">, workerId: worker.workerId as Id<"staffing_workers">, startDate: view.today }))).toBe("FORBIDDEN")
+    expect(await codeOf(alice.mutation(api.logistics.autoAllocateHousing, { region: "Rotterdam" }))).toBe("FORBIDDEN")
+    const fleet = await alice.query(api.logistics.fleetOverview, {})
+    expect(await codeOf(alice.mutation(api.logistics.addVehicleLog, { vehicleId: fleet.vehicles[0]!.id as Id<"staffing_logistics_vehicles">, date: view.today, kind: "fuel", km: 100, litres: 9, costCents: 1700 }))).toBe("FORBIDDEN")
+    await superUser.mutation(api.system.setModuleEnabled, { moduleId: "staffing-logistics", enabled: false })
+    expect(await codeOf(alice.query(api.logistics.housingOverview, {}))).toBe("FORBIDDEN")
+    vi.stubEnv("APP_ENV", "production")
+    expect(await codeOf(t.mutation(internal.logistics._seedHousing, { reset: true }))).toContain("refuses")
+  })
+
+  test("seeded Rotterdam pool: flags, consolidation, incoming team, costs per project", async () => {
+    const t = setup()
+    const { superUser } = await logisticsApp(t)
+    expect(await t.mutation(internal.logistics._seedHousing, {})).toMatchObject({ seeded: true, flats: 6, vehicles: 5 })
+    expect(await t.mutation(internal.logistics._seedHousing, {})).toMatchObject({ seeded: false })
+
+    const view = await superUser.query(api.logistics.housingOverview, { region: "Rotterdam" })
+    expect(view.region).toBe("Rotterdam")
+    expect(view.regions).toEqual(expect.arrayContaining(["Rotterdam", "Bergen", "Hamburg"]))
+    expect(view.flats).toHaveLength(6)
+    const byName = (s: string) => view.flats.find((f) => f.name.startsWith(s))!
+    expect(byName("Vlaardingen").flags.map((f) => f.kind)).toEqual(expect.arrayContaining(["lonely", "no_driver"]))
+    expect(byName("Spijkenisse").flags.map((f) => f.kind)).toContain("under_occupied")
+    expect(new Set(byName("Schiedam").residents.flatMap((r) => r.projectCodes)).size).toBeGreaterThan(1)
+    expect(view.totals.emptyBedCents).toBeGreaterThan(0)
+    expect(view.incoming.map((i) => i.projectCode)).toEqual(["SBP-2026-05", "SBP-2026-05", "SBP-2026-05"])
+    const vl = view.suggestions.find((s) => s.sourceName.startsWith("Vlaardingen"))!
+    expect(vl.moves[0]!.toName).toMatch(/^Dordrecht/)
+    expect(vl.monthlySavingCents).toBe(295000)
+
+    // Incoming Filipinos fill paid beds first, never with the Ukrainian-only speakers.
+    const auto = await superUser.mutation(api.logistics.autoAllocateHousing, { region: "Rotterdam" })
+    expect(auto.placed).toHaveLength(3)
+    expect(auto.placed.every((p) => !p.flatName.startsWith("Dordrecht") && !p.flatName.startsWith("Vlaardingen"))).toBe(true)
+
+    // Apply the move: Vlaardingen is empty from tomorrow.
+    await superUser.mutation(api.logistics.applyConsolidation, { sourceId: vl.sourceId as Id<"staffing_logistics_accommodations"> })
+    const after = await superUser.query(api.logistics.housingOverview, { region: "Rotterdam" })
+    expect(after.flats.find((f) => f.id === vl.sourceId)!.upcoming).toHaveLength(0)
+    expect(after.flats.find((f) => f.name.startsWith("Dordrecht"))!.upcoming.map((r) => r.name)).toContain(vl.moves[0]!.workerName)
+    expect(after.incoming).toHaveLength(0)
+
+    // A full flat refuses one more person.
+    const charlois = after.flats.find((f) => f.name.startsWith("Rotterdam-Charlois"))!
+    const housed = new Set(after.flats.flatMap((f) => [...f.residents, ...f.upcoming].map((r) => r.workerId)))
+    const extra = after.workers.find((w) => !housed.has(w.workerId))!
+    expect(await codeOf(superUser.mutation(api.logistics.saveStay, { accommodationId: charlois.id as Id<"staffing_logistics_accommodations">, workerId: extra.workerId as Id<"staffing_workers">, startDate: after.today }))).toBe("CONFLICT")
+
+    const costs = await superUser.query(api.logistics.housingCosts, { from: after.monthFrom, to: after.monthTo })
+    expect(costs.projects.map((p) => p.projectCode)).toEqual(expect.arrayContaining(["VSW-2026-14", "VSW-2026-15", "SBP-2026-02"]))
+    expect(costs.projects.find((p) => p.projectCode === "VSW-2026-15")!.vehicleCents).toBeGreaterThan(0)
+
+    const fleet = await superUser.query(api.logistics.fleetOverview, { region: "Rotterdam" })
+    expect(fleet.vehicles).toHaveLength(5)
+    expect(fleet.vehicles.filter((v) => v.ownership === "owned")).toHaveLength(3)
+    expect(fleet.totals.km).toBeGreaterThan(0)
+  })
+})

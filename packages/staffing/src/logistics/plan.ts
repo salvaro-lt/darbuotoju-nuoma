@@ -95,6 +95,17 @@ export interface LogisticsPlan {
   dailyDigest: boolean
   notifications: NotificationRow[]
   packing: PackingList
+  /** Members' beds in the regional housing pool (`/app/logistics/housing`) overlapping the window. */
+  poolStays: PoolStayRow[]
+}
+export interface PoolStayRow {
+  id: string
+  workerId: string
+  accommodationId: string
+  accommodationName: string
+  address: string
+  startDate: string
+  endDate: string | null
 }
 
 export async function loadPlan(ctx: DbCtxLike, projectId: ProjectId, opts: { from?: string; days?: number; today?: string } = {}): Promise<LogisticsPlan | null> {
@@ -192,8 +203,29 @@ export async function loadPlan(ctx: DbCtxLike, projectId: ProjectId, opts: { fro
       notes: l.notes,
     })
 
+  // Beds in the regional housing pool: stays of the members in flats not tied to a project.
+  const poolStays: PoolStayRow[] = []
+  const flatCache = new Map<string, { name: string; address: string; pool: boolean }>()
+  for (const workerId of workers.keys()) {
+    const rows = await db
+      .query("staffing_logistics_stays")
+      .withIndex("by_worker", (q) => q.eq("workerId", workerId as WorkerId).lte("startDate", to))
+      .collect()
+    for (const s of rows) {
+      if (s.endDate && s.endDate < from) continue
+      if (!flatCache.has(s.accommodationId)) {
+        const f = await db.get("staffing_logistics_accommodations", s.accommodationId)
+        flatCache.set(s.accommodationId, { name: f?.name ?? "?", address: f?.address ?? "", pool: Boolean(f && !f.projectId) })
+      }
+      const f = flatCache.get(s.accommodationId)!
+      if (f.pool) poolStays.push({ id: s._id, workerId, accommodationId: s.accommodationId, accommodationName: f.name, address: f.address, startDate: s.startDate, endDate: s.endDate ?? null })
+    }
+  }
+  poolStays.sort((a, b) => a.accommodationName.localeCompare(b.accommodationName) || a.startDate.localeCompare(b.startDate))
+
   const planAllocations: PlanAllocation[] = allocations.map((a) => ({ workerId: a.workerId, accommodationId: a.accommodationId ?? null, vehicleId: a.vehicleId ?? null, driver: a.driver }))
-  const plan = computePlan({ today, from, to, members, accommodations, vehicles, allocations: planAllocations, travelLegs })
+  const pooled = poolStays.map((s) => ({ workerId: s.workerId, startDate: s.startDate, endDate: s.endDate }))
+  const plan = computePlan({ today, from, to, members, accommodations, vehicles, allocations: planAllocations, travelLegs, pooled })
   const resourceName = new Map<string, string>([...accommodations.map((a) => [a.id, a.name] as const), ...vehicles.map((v) => [v.id, `${v.model} ${v.plate}`.trim()] as const)])
   const memberName = new Map(members.map((m) => [m.workerId, m.name]))
   for (const l of travelLegs) if (!memberName.has(l.workerId)) memberName.set(l.workerId, l.workerName)
@@ -242,6 +274,7 @@ export async function loadPlan(ctx: DbCtxLike, projectId: ProjectId, opts: { fro
     dailyDigest: settings?.dailyDigest ?? false,
     notifications,
     packing: packingList(upcoming),
+    poolStays,
   }
 }
 
