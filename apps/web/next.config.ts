@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   // .next/standalone/apps/web/server.js.
   outputFileTracingRoot: fileURLToPath(new URL("../..", import.meta.url)),
   // Workspace packages ship TypeScript source; Next compiles them.
-  transpilePackages: ["@digimuza/crm", "@digimuza/documents"],
+  transpilePackages: ["@digimuza/crm", "@digimuza/documents", "@digimuza/staffing"],
   poweredByHeader: false,
   serverExternalPackages: [],
 }

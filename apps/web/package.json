@@ -26,6 +26,7 @@
     "@assistant-ui/react-markdown": "0.14.25",
     "@digimuza/crm": "workspace:*",
     "@digimuza/documents": "workspace:*",
+    "@digimuza/staffing": "workspace:*",
     "@digimuza/system-core": "0.8.0",
     "@mastra/core": "1.82.0",
     "@modelcontextprotocol/sdk": "1.32.2",

@@ -1,7 +1,7 @@
 "use client"
 import { SystemPermissions } from "@digimuza/system-core/modules"
 import { useCan, useCurrentUser, useVisibleModules } from "@digimuza/system-core/react"
-import { AppWindow, Bell, Bot, Check, ChevronsUpDown, Database, FileStack, Files, House, KeyRound, Languages, ListFilter, LogOut, Mail, Mailbox, Plug, Receipt, ScrollText, Signature, Tags, UserRound, Users, Workflow } from "lucide-react"
+import { AppWindow, Bell, Bot, Building2, Check, FolderKanban, HardHat, Library, ChevronsUpDown, Database, FileStack, Files, House, KeyRound, Languages, ListFilter, LogOut, Mail, Mailbox, Plug, Receipt, ScrollText, Signature, Tags, UserRound, Users, Workflow } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import type { ReactNode } from "react"
@@ -41,6 +41,8 @@ import { FinancePermissions } from "@digimuza/system-core/finance"
 import { McpPermissions } from "@digimuza/system-core/mcp"
 import { CrmPermissions } from "@digimuza/crm/manifest"
 import { DocumentsPermissions } from "@digimuza/documents/manifest"
+import { StaffingPermissions } from "@digimuza/staffing/manifest"
+import { useStaffingEnabled } from "./staffing/_components/staffing-ui"
 import { useDocumentsEnabled, useLabels, useSigningVisible } from "./documents/_components/use-documents"
 import { ObjectIcon } from "./crm/_components/icons"
 import { useCrmSchema } from "./crm/_components/use-crm"
@@ -80,6 +82,11 @@ export function AppSidebar() {
   const sidebarViews = useLabels()?.views.filter((v) => v.showInSidebar) ?? []
   const ingestOn = modules.some((m) => m.id === INGEST_MODULE_ID && m.effective)
   const canIngest = useCan(IngestPermissions.read)
+  const staffingOn = useStaffingEnabled()
+  const canWorkers = useCan(StaffingPermissions.workerRead)
+  const canProjects = useCan(StaffingPermissions.projectRead)
+  const canClients = useCan(StaffingPermissions.clientRead)
+  const canCatalog = useCan(StaffingPermissions.catalogManage)
 
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -112,6 +119,22 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* "Darbuotojai ir projektai": the staffing base. Staffing areas append one NavItem each inside this group. */}
+        {staffingOn && (canWorkers || canProjects || canClients) && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{t("staffing.nav.group")}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {canWorkers && <NavItem href="/app/staffing/workers" icon={<HardHat />} label={t("staffing.nav.workers")} />}
+                {canProjects && <NavItem href="/app/staffing/projects" icon={<FolderKanban />} label={t("staffing.nav.projects")} />}
+                {canClients && <NavItem href="/app/staffing/clients" icon={<Building2 />} label={t("staffing.nav.clients")} />}
+                {/* staffing areas: one NavItem each below */}
+                {canCatalog && <NavItem href="/app/staffing/catalog" icon={<Library />} label={t("staffing.nav.catalog")} />}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {documentsOn && canDocuments && (
           <SidebarGroup>
