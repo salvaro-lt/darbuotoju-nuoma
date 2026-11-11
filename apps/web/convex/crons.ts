@@ -8,5 +8,7 @@ const crons = cronJobs()
 crons.daily("logistics daily warnings", { hourUTC: 6, minuteUTC: 0 }, internal.logistics._dailyDigest)
 // Timesheets: remind clients whose timesheet is late (07:00 UTC, n8n dr-nuoma-tabelio-priminimas).
 crons.daily("timesheets late client reminders", { hourUTC: 7, minuteUTC: 0 }, internal.timesheets._dailyReminders)
+// staffing-compliance: daily digest of documents expiring in 60 / 30 days or expired (n8n → planner).
+crons.daily("staffing-compliance expiry digest", { hourUTC: 5, minuteUTC: 0 }, internal.compliance._dailyDigest)
 
 export default crons

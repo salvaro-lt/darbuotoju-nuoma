@@ -17,7 +17,9 @@
     "./logistics/tables": "./src/logistics/tables.ts",
     "./timesheets/manifest": "./src/timesheets/manifest.ts",
     "./timesheets/pure": "./src/timesheets/pure.ts",
-    "./timesheets/tables": "./src/timesheets/tables.ts"
+    "./timesheets/tables": "./src/timesheets/tables.ts",
+    "./compliance/manifest": "./src/compliance/manifest.ts",
+    "./compliance/pure": "./src/compliance/pure.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

@@ -130,6 +130,7 @@ describe("AI assistant", () => {
       ["staffing.find_available_workers", false],
       ["staffing.list_projects", false],
       ["staffing-teams.propose_team", false],
+      ["staffing-compliance.project_readiness", false],
       ["automations.list", false],
       ["automations.get", false],
       ["automations.list_targets", false],

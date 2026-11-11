@@ -31,3 +31,4 @@ export { staffingTools, staffingListWorkersTool, staffingGetWorkerTool, staffing
 export * from "./teams"
 export * from "./logistics"
 export * from "./timesheets"
+export * from "./compliance"

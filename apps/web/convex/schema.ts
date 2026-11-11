@@ -4,6 +4,7 @@ import { staffingTables } from "@digimuza/staffing/tables"
 import { teamsTables } from "@digimuza/staffing"
 import { logisticsTables } from "@digimuza/staffing/logistics/tables"
 import { timesheetsTables } from "@digimuza/staffing/timesheets/tables"
+import { complianceTables } from "@digimuza/staffing"
 import { aiTables } from "@digimuza/system-core/ai"
 import { automationsTables } from "@digimuza/system-core/automations"
 import { systemTables } from "@digimuza/system-core/convex"
@@ -39,4 +40,5 @@ export default defineSchema({
   ...teamsTables,
   ...logisticsTables,
   ...timesheetsTables,
+  ...complianceTables,
 })

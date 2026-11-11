@@ -13,6 +13,7 @@ import type * as aiConfig from "../aiConfig.js";
 import type * as aiRunner from "../aiRunner.js";
 import type * as automations from "../automations.js";
 import type * as automationsConfig from "../automationsConfig.js";
+import type * as compliance from "../compliance.js";
 import type * as crm from "../crm.js";
 import type * as crmBlueprint from "../crmBlueprint.js";
 import type * as crmDemo from "../crmDemo.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   aiRunner: typeof aiRunner;
   automations: typeof automations;
   automationsConfig: typeof automationsConfig;
+  compliance: typeof compliance;
   crm: typeof crm;
   crmBlueprint: typeof crmBlueprint;
   crmDemo: typeof crmDemo;
