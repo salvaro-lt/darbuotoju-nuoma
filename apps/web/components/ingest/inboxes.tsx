@@ -8,7 +8,6 @@ import { ArrowLeft, Link2, Mailbox, Plus, Trash2, Unlink, Workflow } from "lucid
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { toast } from "sonner"
 import { EmptyState } from "@/components/app/empty-state"
 import { PageHeader } from "@/components/app/page-header"
 import { CardGridSkeleton, StackSkeleton } from "@/components/app/skeletons"
@@ -144,6 +143,7 @@ export function CreateInboxDialog({ open, onOpenChange, domain, onCreated }: { o
             e.preventDefault()
             void run(() => create({ name, localPart: localPart || undefined, randomSuffix: random }), {
               success: t("ingest.create.done"),
+              error: (se) => (se?.code === "CONFLICT" ? t("ingest.error.address_taken") : se?.code === "VALIDATION" ? t("ingest.error.invalid_local_part") : undefined),
             }).then((r) => {
               if (!r) return
               onCreated?.(r)
@@ -277,7 +277,7 @@ export function InboxDetail({ inboxId }: { inboxId: string }) {
               variant="destructive"
               disabled={busy}
               onClick={() =>
-                void run(() => remove({ inboxId }), { success: t("ingest.inbox.deleted"), onError: (e) => e.code === "CONFLICT" && toast.error(t("ingest.error.inbox_in_use")) }).then((r) => {
+                void run(() => remove({ inboxId }), { success: t("ingest.inbox.deleted"), error: (se) => (se?.code === "CONFLICT" ? t("ingest.error.inbox_in_use") : undefined) }).then((r) => {
                   setConfirm(false)
                   if (r) router.push("/app/ingest/inboxes")
                 })

@@ -16,13 +16,13 @@ RUN corepack enable
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# pnpm workspace: install from the manifests only, so this layer is cached
-# until a dependency changes.
+# pnpm workspace: install from the manifests plus the workspace packages
+# (packages/*, every one linked by the install; a new package needs no change
+# here). .dockerignore keeps host node_modules out of the build context.
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/
-COPY packages/crm/package.json ./packages/crm/
-COPY packages/documents/package.json ./packages/documents/
+COPY packages ./packages
 # vendor/ only exists while @digimuza/system-core is consumed as a packed tarball.
 COPY apps/web/vendo[r] ./apps/web/vendor/
 RUN pnpm install --frozen-lockfile
