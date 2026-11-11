@@ -5,6 +5,7 @@
 import { addDays, addMonths, todayIso } from "../pure"
 import type { ClientDoc, DbCtxLike, ProjectDoc, ProjectId, WorkerDoc } from "../shared"
 import { reconcile, weekStartOf } from "../timesheets/pure"
+import { housingCostsByProject } from "../logistics/housing-data"
 import { billableHours, hoursValueCents, invReader, rateTermsResolver, type BillableHours, type InvoiceDoc } from "./operations"
 import {
   allocateCents,
@@ -98,6 +99,13 @@ export async function profitData(ctx: DbCtxLike, range: Range = ALL, projectFilt
       .collect()
   ).filter((p) => !projectFilter || p.projectId === projectFilter)
   const { rateFor } = await wageRates(ctx)
+  // Housing pool and fleet (logistics): each project's share of flat rent (empty beds included) and vehicles.
+  // Bounded to the last 12 months up to today: the split walks day by day.
+  const today = todayIso()
+  const hFrom = range.from > addMonths(today, -12) ? range.from : addMonths(today, -12)
+  const hTo = range.to < today ? range.to : today
+  const housing = new Map<string, { accommodationCents: number; vehicleCents: number }>()
+  if (hFrom <= hTo) for (const r of (await housingCostsByProject(ctx, { from: hFrom, to: hTo })).projects) housing.set(r.projectId, r)
   const clients = new Map<string, ClientDoc>()
   const out: ProfitData = { rows: [], series: new Map(), days: [], overheadByProject: new Map(), generalOverheadCents: 0, clients, costsByCategory: new Map() }
   for (const p of purchases) if (!p.projectId) out.generalOverheadCents += p.netCents
@@ -146,6 +154,20 @@ export async function profitData(ctx: DbCtxLike, range: Range = ALL, projectFilt
       cats[pi.category] += pi.netCents
       dayCosts.push({ date: pi.issueDate, cents: pi.netCents })
     }
+    // Pool housing / fleet costs, unless the project already books that category by hand (no double counting).
+    const pool = housing.get(p._id)
+    let poolCents = 0
+    if (pool) {
+      const booked = (cat: string) => costs.some((c) => c.category === cat) || purchases.some((pi) => pi.projectId === p._id && pi.category === cat)
+      if (!booked("accommodation") && pool.accommodationCents > 0) {
+        poolCents += pool.accommodationCents
+        cats.accommodation += pool.accommodationCents
+      }
+      if (!booked("transport") && pool.vehicleCents > 0) {
+        poolCents += pool.vehicleCents
+        cats.transport += pool.vehicleCents
+      }
+    }
     let invoicedCents = 0
     let paidCents = 0
     for (const inv of invoices) {
@@ -155,8 +177,8 @@ export async function profitData(ctx: DbCtxLike, range: Range = ALL, projectFilt
       // Payments are per invoice: split them over projects pro rata.
       if (inv.subtotalCents > 0) paidCents += Math.round((inv.paidCents * part) / (inv.totalCents || 1))
     }
-    const costCents = wageCents + otherCostCents + purchaseCents
-    out.overheadByProject.set(p._id, otherCostCents + purchaseCents)
+    const costCents = wageCents + otherCostCents + purchaseCents + poolCents
+    out.overheadByProject.set(p._id, otherCostCents + purchaseCents + poolCents)
     out.costsByCategory.set(p._id, cats)
     // Margin on the value of the work done (billable hours × the same rates the invoices use), so revenue
     // and costs cover the same days; it equals invoiced revenue once every period is invoiced.
