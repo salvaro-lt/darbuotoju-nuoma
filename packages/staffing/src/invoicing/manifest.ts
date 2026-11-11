@@ -9,7 +9,7 @@ export const staffingInvoicing = defineModule({
   id: "staffing-invoicing",
   kind: "business",
   name: "Sąskaitos ir pelningumas",
-  description: "Sąskaitų rengimas iš darbo valandų, eksportas į SitePro, apmokėjimų sekimas, priminimai, projektų sąnaudos ir pelningumas",
+  description: "Sąskaitos iš patvirtintų tabelių, uždaryto proceso grandinė, eksportas į SitePro, apmokėjimai ir priminimai, pirkimo sąskaitų tvirtinimas, pelningumas pagal projektus, klientus ir darbuotojus",
   dependsOn: ["staffing"],
   permissions: [
     { id: "staffing-invoicing:invoice:read", name: "Matyti sąskaitas", description: "Peržiūrėti sąskaitas, apmokėjimus, skolas ir darbo valandas" },
@@ -17,7 +17,8 @@ export const staffingInvoicing = defineModule({
     { id: "staffing-invoicing:invoice:approve", name: "Tvirtinti sąskaitas", description: "Patvirtinti sąskaitą (suteikia numerį ir išrašymo datą)" },
     { id: "staffing-invoicing:payment:manage", name: "Registruoti apmokėjimus", description: "Įvesti ir šalinti gautus apmokėjimus" },
     { id: "staffing-invoicing:cost:manage", name: "Valdyti projektų sąnaudas", description: "Įvesti ir šalinti projektų sąnaudas" },
-    { id: "staffing-invoicing:profit:read", name: "Matyti pelningumą", description: "Peržiūrėti projektų sąnaudas, maržą ir pelningumo ataskaitą" },
+    { id: "staffing-invoicing:profit:read", name: "Matyti pelningumą", description: "Peržiūrėti pelningumą pagal projektus, klientus ir darbuotojus, darbuotojų valandinius kaštus" },
+    { id: "staffing-invoicing:purchase:approve", name: "Tvirtinti pirkimo sąskaitas", description: "Patvirtinti arba atmesti tiekėjų sąskaitas prieš jas perduodant buhalterijai (SitePro)" },
   ],
   initialSubroles: [
     {
@@ -35,7 +36,7 @@ export const staffingInvoicing = defineModule({
     {
       id: "staffing-invoicing:director",
       name: "Direktorius (sąskaitos)",
-      description: "Viskas, plius sąskaitų tvirtinimas",
+      description: "Viskas, plius sąskaitų ir pirkimo sąskaitų tvirtinimas",
       permissions: [
         "staffing-invoicing:invoice:read",
         "staffing-invoicing:invoice:manage",
@@ -43,6 +44,7 @@ export const staffingInvoicing = defineModule({
         "staffing-invoicing:payment:manage",
         "staffing-invoicing:cost:manage",
         "staffing-invoicing:profit:read",
+        "staffing-invoicing:purchase:approve",
       ],
     },
   ],
@@ -55,6 +57,7 @@ export const StaffingInvoicingPermissions = {
   paymentManage: "staffing-invoicing:payment:manage",
   costManage: "staffing-invoicing:cost:manage",
   profitRead: "staffing-invoicing:profit:read",
+  purchaseApprove: "staffing-invoicing:purchase:approve",
 } as const satisfies Record<string, PermissionOf<typeof staffingInvoicing>>
 
 export type StaffingInvoicingPermission = (typeof StaffingInvoicingPermissions)[keyof typeof StaffingInvoicingPermissions]

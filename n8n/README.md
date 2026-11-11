@@ -36,7 +36,7 @@ Every body accepts:
 | `dr-nuoma-mokejimo-priminimas` | 3 | `invoiceNumber, amountCents, currency?, dueDate, daysOverdue, stage (1 polite, 2 firmer), contactName?, senderName?` | client contact |
 | `dr-nuoma-komandos-pasiulymas` | 1 | `clientName, request {…}, team: [{name, trade, isDriver?, certificates?[]}], missing?: string[]` → AI (9Router `fast`) writes the client answer draft | **project manager** (not the client: client communication stays human) |
 | `dr-nuoma-dokumentu-paketas` | DIG-113 | `subject, html, text, attachments: [{filename, url}], linkUrl` (the app renders the mail: team, document validity, "Trūksta: …"; Resend fetches each `url` as the attachment; big packages have no attachments, only the ZIP link) | client contacts (package page or `staffing-compliance.send_package`) |
-| `dr-nuoma-pranesimas` | 4 (and any) | `title, text?, lines?: string[], appUrl?` | planner / coordinator (plan changed, car without driver, beds < people…) |
+| `dr-nuoma-pranesimas` | 4 (and any) | `title, text?, lines?: string[], appUrl?` | planner / coordinator (plan changed, car without driver, beds < people…); director (`INVOICING_DIRECTOR_EMAIL`: billing periods without an invoice, daily); `SITEPRO_IMPORT_EMAIL` (approved purchase invoices) |
 
 Inactive: `dr-nuoma – Pirkimo sąskaitos į SitePro` (audit quick win: forward
 purchase invoices from 3 mailboxes to SitePro). Needs the client's IMAP

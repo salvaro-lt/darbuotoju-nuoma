@@ -5,21 +5,21 @@ import { internalActionGeneric, internalMutationGeneric, makeFunctionReference, 
 import { v } from "convex/values"
 import { recordAudit, type ConvexSystem } from "@digimuza/system-core/convex"
 import { STAFFING_MODULE_ID } from "../manifest"
-import { rangesOverlap, todayIso } from "../pure"
-import { actorArgs, actorId, cleanDate, cleanText, fail, opts, type ClientDoc, type ClientId, type DbCtxLike, type ProjectId } from "../shared"
+import { addDays, rangesOverlap, todayIso } from "../pure"
+import { actorArgs, actorId, cleanDate, cleanText, fail, opts, type ClientId, type DbCtxLike, type ProjectId, type TradeId, type WorkerId } from "../shared"
+
+import { chainAlerts, chainOverview, clientProfit, profitData, workerProfit, type ProfitRow } from "./insights"
 import { STAFFING_INVOICING_MODULE_ID, StaffingInvoicingPermissions as P } from "./manifest"
 import {
   allocateInvoiceNumber,
   billableHours,
   buildDraft,
   clientProjects,
-  hoursValueCents,
   invoiceView,
   invReader,
   invWriter,
   lookups,
   openInvoices,
-  rateTermsResolver,
   surchargesFor,
   type InvoiceDoc,
   type InvoiceView,
@@ -31,23 +31,25 @@ import {
   daysOverdue,
   dueDateFor,
   dueReminderStage,
+  DEFAULT_MISSING_INVOICE_ALERT_DAYS,
   manualReminderStage,
-  marginPct,
   nextBillingPeriod,
   OPEN_INVOICE_STATUSES,
   REMINDER_STAGE_DAYS,
   siteProCsv,
   statusAfterPayments,
-  weeklySeries,
   type AgingBucket,
   type CostCategory,
   type InvoiceStatus,
   type ReminderStage,
   type SiteProInvoice,
-  type WeekPoint,
+  weekStart,
 } from "./pure"
+import { definePurchases } from "./purchases"
 import { defineInvoicingSeed } from "./seed"
 import { costCategoryValidator, invoiceStatusValidator } from "./tables"
+
+const rangeArgs = { from: v.optional(v.string()), to: v.optional(v.string()) }
 
 export interface InvoicingOptions {
   /** Invoice number series prefix. Default `DN` (`DN-2026-0001`). */
@@ -56,6 +58,8 @@ export interface InvoicingOptions {
   functionsPath?: string
   /** The issuing company, printed on invoices. */
   seller?: SellerInfo
+  /** Days after a billing period ends before a missing invoice raises an alert (chain page, daily check). Default 7. */
+  missingInvoiceAlertDays?: number
 }
 
 export interface SellerInfo {
@@ -88,25 +92,15 @@ export interface InvoiceDetail {
   nextReminder: { stage: ReminderStage; on: string } | null
 }
 
-export interface ProfitRow {
-  projectId: ProjectId
-  code: string
-  name: string
-  clientName: string
-  status: string
-  invoicedCents: number
-  paidCents: number
-  earnedCents: number
-  costCents: number
-  marginCents: number
-  marginPct: number | null
-  uninvoicedCents: number
-}
+export type { ProfitRow }
 
 export function defineInvoicing(system: ConvexSystem, options: InvoicingOptions = {}) {
   const prefix = options.numberPrefix ?? "DN"
   const path = options.functionsPath ?? "invoicing"
   const seller = options.seller ?? DEFAULT_SELLER
+  const alertAfterDays = options.missingInvoiceAlertDays ?? DEFAULT_MISSING_INVOICE_ALERT_DAYS
+  const chainDeliverRef = makeFunctionReference<"action">(`${path}:_deliverChainAlert`)
+  const chainResultRef = makeFunctionReference<"mutation">(`${path}:_chainRunResult`)
   const deliverRef = makeFunctionReference<"action">(`${path}:_deliverReminder`)
   const resultRef = makeFunctionReference<"mutation">(`${path}:_reminderResult`)
 
@@ -198,63 +192,30 @@ export function defineInvoicing(system: ConvexSystem, options: InvoicingOptions 
     return n
   }
 
-  async function profitRows(ctx: DbCtxLike, projectFilter?: ProjectId): Promise<{ rows: ProfitRow[]; series: Map<string, WeekPoint[]> }> {
-    const db = invReader(ctx)
-    const projects = projectFilter ? [await db.get("staffing_projects", projectFilter)].filter((p) => p !== null) : await db.query("staffing_projects").collect()
-    const invoices = (await db.query("staffing_invoicing_invoices").collect()).filter((i) => i.status !== "draft")
-    const rows: ProfitRow[] = []
-    const series = new Map<string, WeekPoint[]>()
-    const clients = new Map<string, ClientDoc | null>()
-    for (const p of projects) {
-      if (p.status === "cancelled") continue
-      if (!clients.has(p.clientId)) clients.set(p.clientId, await db.get("staffing_clients", p.clientId))
-      const client = clients.get(p.clientId)
-      if (!client) continue
-      const hours = await billableHours(ctx, { projectId: p._id, from: "0000-01-01", to: "9999-12-31" })
-      const termsFor = await rateTermsResolver(ctx, client, [p])
-      const earned = hours.map((h) => ({ date: h.date, cents: hoursValueCents(h, termsFor(h.projectId, h.tradeId)) }))
-      const costs = await db
-        .query("staffing_invoicing_costs")
-        .withIndex("by_project_date", (i) => i.eq("projectId", p._id))
-        .collect()
-      let invoicedCents = 0
-      let paidCents = 0
-      for (const inv of invoices) {
-        if (!inv.projectIds.includes(p._id)) continue
-        const part = inv.lines.filter((l) => l.projectId === p._id).reduce((s, l) => s + l.amountCents, 0)
-        invoicedCents += part
-        // Payments are per invoice: split them over projects pro rata.
-        if (inv.subtotalCents > 0) paidCents += Math.round((inv.paidCents * part) / (inv.totalCents || 1))
+  function cleanRange(a: { from?: string | undefined; to?: string | undefined }, op: string) {
+    const from = cleanDate(a.from, "from", op) ?? "0000-01-01"
+    const to = cleanDate(a.to, "to", op) ?? "9999-12-31"
+    if (to < from) fail("VALIDATION", "end_before_start", op, ["to"])
+    return { from, to }
+  }
+
+  /** Records a run of the missing-invoice check and schedules the director's notification when something is missing. */
+  async function queueChainCheck(ctx: DbCtxLike & { scheduler: { runAfter: (ms: number, ref: never, args: never) => Promise<unknown> } }, trigger: "cron" | "manual", by: string) {
+    const db = invWriter(ctx)
+    const today = todayIso()
+    const alerts = chainAlerts(await chainOverview(ctx, { today, alertAfterDays }))
+    const atRiskCents = alerts.reduce((s, x) => s + x.atRiskCents, 0)
+    const runId = await db.insert("staffing_invoicing_chainRuns", { date: today, trigger, alerts: alerts.length, atRiskCents, status: alerts.length ? "pending" : "nothing", createdBy: by, ...(alerts.length ? {} : { completedAt: Date.now() }) })
+    if (alerts.length) {
+      const eur = (c: number) => `${(c / 100).toLocaleString("lt-LT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR`
+      const payload = {
+        title: `Neišrašytos sąskaitos: ${alerts.length} (${eur(atRiskCents)})`,
+        text: `Šių klientų atsiskaitymo periodai baigėsi daugiau nei prieš ${alertAfterDays} d., o sąskaita dar neišrašyta.`,
+        lines: alerts.map((x) => `${x.clientName} (${x.clientCode}), ${x.from}–${x.to}: periodas baigėsi prieš ${x.daysSinceEnd} d., sąskaita neišrašyta, ${eur(x.atRiskCents)}`),
       }
-      const earnedCents = earned.reduce((s, e) => s + e.cents, 0)
-      const costCents = costs.reduce((s, c) => s + c.amountCents, 0)
-      // Margin on the value of the work done (billable hours × the same rates the invoices use), so revenue
-      // and costs cover the same weeks; it equals invoiced revenue once every period is invoiced.
-      const revenue = earnedCents
-      rows.push({
-        projectId: p._id,
-        code: p.code,
-        name: p.name,
-        clientName: client.name,
-        status: p.status,
-        invoicedCents,
-        paidCents,
-        earnedCents,
-        costCents,
-        marginCents: revenue - costCents,
-        marginPct: marginPct(revenue, costCents),
-        uninvoicedCents: Math.max(0, earnedCents - invoicedCents),
-      })
-      series.set(
-        p._id,
-        weeklySeries(
-          earned,
-          costs.map((c) => ({ date: c.date, cents: c.amountCents })),
-        ),
-      )
+      await ctx.scheduler.runAfter(0, chainDeliverRef as never, { runId, payload } as never)
     }
-    rows.sort((a, b) => (a.marginPct ?? 999) - (b.marginPct ?? 999))
-    return { rows, series }
+    return { runId, alerts: alerts.length, atRiskCents }
   }
 
   async function siteProInvoice(ctx: DbCtxLike, inv: InvoiceDoc): Promise<SiteProInvoice> {
@@ -697,23 +658,38 @@ export function defineInvoicing(system: ConvexSystem, options: InvoicingOptions 
         await system.requirePermission(ctx, P.invoiceRead, opts(a))
         const db = invReader(ctx)
         const to = a.to ?? todayIso()
-        const from = a.from ?? new Date(Date.parse(`${to}T00:00:00Z`) - 27 * 86_400_000).toISOString().slice(0, 10)
-        const rows = await db
-          .query("staffing_invoicing_hours")
-          .withIndex("by_project_date", (i) => i.eq("projectId", a.projectId).gte("date", from).lte("date", to))
-          .collect()
+        const from = a.from ?? addDays(to, -27)
+        // Approved timesheet weeks plus manual corrections: exactly what an invoice draft prices.
+        const rows = await billableHours(ctx, { projectId: a.projectId, from, to })
         const workers = new Map<string, string>()
         const l = lookups(ctx)
         const out = []
-        for (const r of rows.sort((x, y) => y.date.localeCompare(x.date))) {
+        for (const [i, r] of rows.sort((x, y) => y.date.localeCompare(x.date)).entries()) {
           if (!workers.has(r.workerId)) {
-            const w = await db.get("staffing_workers", r.workerId)
+            const w = await db.get("staffing_workers", r.workerId as WorkerId)
             workers.set(r.workerId, w ? `${w.firstName} ${w.lastName}` : "?")
           }
-          const t = await l.trade(r.tradeId)
-          out.push({ id: r._id, date: r.date, workerId: r.workerId, workerName: workers.get(r.workerId)!, tradeId: r.tradeId, tradeCode: t?.code ?? "?", tradeNameLt: t?.nameLt ?? "?", tradeNameEn: t?.nameEn ?? "?", regular: r.regular, overtime: r.overtime, weekend: r.weekend, source: r.source, note: r.note ?? null })
+          const t = await l.trade(r.tradeId as TradeId)
+          out.push({ id: r.id ?? `ts-${r.workerId}-${r.date}-${i}`, date: r.date, workerId: r.workerId, workerName: workers.get(r.workerId)!, tradeId: r.tradeId, tradeCode: t?.code ?? "?", tradeNameLt: t?.nameLt ?? "?", tradeNameEn: t?.nameEn ?? "?", regular: r.regular, overtime: r.overtime, weekend: r.weekend, source: r.source, note: r.note })
         }
-        return { from, to, rows: out }
+        // Weeks of the range with own hours that are not approved yet (they are not billable until approved).
+        const unapproved = new Set<string>()
+        const approved = new Set(
+          (
+            await db
+              .query("staffing_timesheets_weeks")
+              .withIndex("by_project_week", (i) => i.eq("projectId", a.projectId).gte("weekStart", addDays(from, -6)).lte("weekStart", to))
+              .collect()
+          ).map((w) => w.weekStart),
+        )
+        for (const e of await db
+          .query("staffing_timesheets_entries")
+          .withIndex("by_project_date", (i) => i.eq("projectId", a.projectId).gte("date", from).lte("date", to))
+          .collect()) {
+          const monday = weekStart(e.date)
+          if (!approved.has(monday)) unapproved.add(monday)
+        }
+        return { from, to, rows: out, unapprovedWeeks: [...unapproved].sort() }
       },
     }),
 
@@ -812,37 +788,182 @@ export function defineInvoicing(system: ConvexSystem, options: InvoicingOptions 
       },
     }),
 
-    /** Every project with invoiced revenue, costs and margin; worst margin first. */
+    /** Every project with revenue (value of billable hours), wages, costs and margin in the period; worst margin first. */
     portfolio: queryGeneric({
-      args: { ...actorArgs },
+      args: { ...actorArgs, ...rangeArgs },
       handler: async (ctx, a): Promise<ProfitRow[]> => {
-        await system.requirePermission(ctx, P.profitRead, opts(a))
-        return (await profitRows(ctx)).rows
+        const { sys } = await system.requirePermission(ctx, P.profitRead, opts(a))
+        return (await profitData(ctx, cleanRange(a, sys.operationId))).rows
       },
     }),
 
-    /** One project's profitability: totals, costs by category, weekly value of hours vs costs, cost entries. */
-    projectProfitability: queryGeneric({
-      args: { ...actorArgs, projectId: v.id("staffing_projects") },
+    /** Per client: revenue, wages, the client's project costs and its share of general overhead (by hours), margin. */
+    clientProfitability: queryGeneric({
+      args: { ...actorArgs, ...rangeArgs },
       handler: async (ctx, a) => {
-        await system.requirePermission(ctx, P.profitRead, opts(a))
-        const { rows, series } = await profitRows(ctx, a.projectId)
-        const row = rows[0]
+        const { sys } = await system.requirePermission(ctx, P.profitRead, opts(a))
+        const d = await profitData(ctx, cleanRange(a, sys.operationId))
+        return { rows: clientProfit(d), generalOverheadCents: d.generalOverheadCents }
+      },
+    }),
+
+    /** Per worker: billed value − wage cost (hours × hourly cost) − allocated housing, transport and other project costs per day. */
+    workerProfitability: queryGeneric({
+      args: { ...actorArgs, ...rangeArgs },
+      handler: async (ctx, a) => {
+        const { sys } = await system.requirePermission(ctx, P.profitRead, opts(a))
+        const d = await profitData(ctx, cleanRange(a, sys.operationId))
+        return await workerProfit(ctx, d)
+      },
+    }),
+
+    /** A worker's hourly cost (employer's cost); `null` goes back to the trade default. */
+    setWageRate: mutationGeneric({
+      args: { ...actorArgs, workerId: v.id("staffing_workers"), hourlyCostCents: v.union(v.number(), v.null()) },
+      handler: async (ctx, a) => {
+        const { sys, actor } = await system.requirePermission(ctx, P.costManage, opts(a))
+        const op = sys.operationId
+        const db = invWriter(ctx)
+        if (!(await db.get("staffing_workers", a.workerId))) fail("NOT_FOUND", "worker_not_found", op)
+        if (a.hourlyCostCents !== null && (!Number.isInteger(a.hourlyCostCents) || a.hourlyCostCents <= 0 || a.hourlyCostCents > 100_00_00)) fail("VALIDATION", "invalid_hourlyCostCents", op, ["hourlyCostCents"])
+        const existing = await db
+          .query("staffing_invoicing_wageRates")
+          .withIndex("by_worker", (i) => i.eq("workerId", a.workerId))
+          .first()
+        if (a.hourlyCostCents === null) {
+          if (existing) await db.delete("staffing_invoicing_wageRates", existing._id)
+        } else if (existing) await db.patch("staffing_invoicing_wageRates", existing._id, { hourlyCostCents: a.hourlyCostCents, updatedBy: actorId(actor), updatedAt: Date.now() })
+        else await db.insert("staffing_invoicing_wageRates", { workerId: a.workerId, hourlyCostCents: a.hourlyCostCents, updatedBy: actorId(actor), updatedAt: Date.now() })
+        await recordAudit(sys, actor, { action: "staffing-invoicing.wage_rate.update", targetType: "staffing_workers", targetId: a.workerId, changes: { hourlyCostCents: a.hourlyCostCents } })
+        return { operationId: op }
+      },
+    }),
+
+    /** One project's profitability: totals, costs by category (wages computed), weekly value of hours vs costs, cost entries and approved purchase invoices. */
+    projectProfitability: queryGeneric({
+      args: { ...actorArgs, projectId: v.id("staffing_projects"), ...rangeArgs },
+      handler: async (ctx, a) => {
+        const { sys } = await system.requirePermission(ctx, P.profitRead, opts(a))
+        const range = cleanRange(a, sys.operationId)
+        const d = await profitData(ctx, range, a.projectId)
+        const row = d.rows[0]
         if (!row) return null
-        const costs = await invReader(ctx)
+        const db = invReader(ctx)
+        const costs = await db
           .query("staffing_invoicing_costs")
-          .withIndex("by_project_date", (i) => i.eq("projectId", a.projectId))
+          .withIndex("by_project_date", (i) => i.eq("projectId", a.projectId).gte("date", range.from).lte("date", range.to))
           .collect()
-        const byCategory = Object.fromEntries(COST_CATEGORIES.map((c) => [c, 0])) as Record<CostCategory, number>
-        for (const c of costs) byCategory[c.category] += c.amountCents
+        const purchases = (
+          await db
+            .query("staffing_invoicing_purchases")
+            .withIndex("by_project", (i) => i.eq("projectId", a.projectId).gte("issueDate", range.from).lte("issueDate", range.to))
+            .collect()
+        ).filter((p) => p.status === "approved")
+        const byCategory = d.costsByCategory.get(a.projectId) ?? (Object.fromEntries(COST_CATEGORIES.map((c) => [c, 0])) as Record<CostCategory, number>)
+        const entries = [
+          ...costs.map((c) => ({ id: c._id as string, kind: "cost" as const, category: c.category, date: c.date, amountCents: c.amountCents, note: c.note })),
+          ...purchases.map((p) => ({ id: p._id as string, kind: "purchase" as const, category: p.category, date: p.issueDate, amountCents: p.netCents, note: `${p.supplierName} ${p.number}` })),
+        ]
         return {
           ...row,
           byCategory,
-          weeks: series.get(a.projectId) ?? [],
-          costs: costs.sort((x, y) => y.date.localeCompare(x.date)).map((c) => ({ id: c._id, category: c.category, date: c.date, amountCents: c.amountCents, note: c.note })),
+          weeks: d.series.get(a.projectId) ?? [],
+          costs: entries.sort((x, y) => y.date.localeCompare(x.date)),
         }
       },
     }),
+
+    // ---------------------------------------------------------------- the closed process (chain)
+
+    /**
+     * "Uždarytas procesas": for every client billing period of the last
+     * `months` months, hours recorded → week approved → client timesheet
+     * received → reconciled → invoice drafted → approved → sent → paid, with
+     * alerts for periods that ended long ago without an issued invoice.
+     */
+    chain: queryGeneric({
+      args: { ...actorArgs, months: v.optional(v.number()) },
+      handler: async (ctx, a) => {
+        const { sys } = await system.requirePermission(ctx, P.invoiceRead, opts(a))
+        const months = a.months ?? 6
+        if (!Number.isInteger(months) || months < 1 || months > 24) fail("VALIDATION", "invalid_months", sys.operationId, ["months"])
+        const today = todayIso()
+        const rows = await chainOverview(ctx, { today, months, alertAfterDays })
+        const alerts = chainAlerts(rows)
+        const lastRun = await invReader(ctx).query("staffing_invoicing_chainRuns").order("desc").first()
+        return {
+          today,
+          alertAfterDays,
+          rows,
+          alerts,
+          atRiskCents: alerts.reduce((s, x) => s + x.atRiskCents, 0),
+          lastRun: lastRun ? { date: lastRun.date, trigger: lastRun.trigger, alerts: lastRun.alerts, atRiskCents: lastRun.atRiskCents, status: lastRun.status, error: lastRun.error ?? null, at: lastRun.completedAt ?? lastRun._creationTime } : null,
+        }
+      },
+    }),
+
+    /** The daily missing-invoice check, now (the director gets the n8n notification when something is missing). */
+    runChainCheck: mutationGeneric({
+      args: { ...actorArgs },
+      handler: async (ctx, a) => {
+        const { sys, actor } = await system.requirePermission(ctx, P.invoiceManage, opts(a))
+        const r = await queueChainCheck(ctx, "manual", actorId(actor))
+        await recordAudit(sys, actor, { action: "staffing-invoicing.chain.check", targetType: "staffing_invoicing_chainRuns", targetId: r.runId, changes: { alerts: r.alerts, atRiskCents: r.atRiskCents } })
+        return { alerts: r.alerts, atRiskCents: r.atRiskCents, operationId: sys.operationId }
+      },
+    }),
+
+    /** Daily job (convex/crons.ts): periods that ended more than `missingInvoiceAlertDays` ago without an issued invoice → the director. */
+    _dailyChainCheck: internalMutationGeneric({
+      args: {},
+      handler: async (ctx): Promise<{ alerts: number; skipped?: string }> => {
+        const { sys } = await system.context(ctx)
+        for (const m of [STAFFING_MODULE_ID, STAFFING_INVOICING_MODULE_ID]) {
+          const row = await sys.store.get("modules", m)
+          if (!row?.enabled || !row.present) return { alerts: 0, skipped: `module_disabled:${m}` }
+        }
+        const r = await queueChainCheck(ctx, "cron", "system")
+        if (r.alerts) await recordAudit(sys, "system", { action: "staffing-invoicing.chain.check", targetType: "staffing_invoicing_chainRuns", targetId: r.runId, changes: { alerts: r.alerts, atRiskCents: r.atRiskCents, trigger: "cron" } })
+        return { alerts: r.alerts }
+      },
+    }),
+
+    /** Posts the missing-invoice summary to n8n `dr-nuoma-pranesimas` (to INVOICING_DIRECTOR_EMAIL; outside production redirected to the first super user). */
+    _deliverChainAlert: internalActionGeneric({
+      args: { runId: v.id("staffing_invoicing_chainRuns"), payload: v.object({ title: v.string(), text: v.string(), lines: v.array(v.string()) }) },
+      handler: async (ctx, a) => {
+        const done = (status: "sent" | "failed" | "not_configured", extra: { to?: string; error?: string } = {}) => ctx.runMutation(chainResultRef as never, { runId: a.runId, status, ...extra } as never)
+        const url = process.env.N8N_URL
+        const secret = process.env.N8N_WEBHOOK_SECRET
+        if (!url || !secret) return done("not_configured")
+        const production = process.env.APP_ENV === "production"
+        const redirectTo = production ? undefined : (process.env.SUPER_USER_EMAILS ?? "").split(",").map((s) => s.trim()).find(Boolean)
+        const to = process.env.INVOICING_DIRECTOR_EMAIL ?? redirectTo
+        if (!to) return done("failed", { error: "no_director_email" })
+        const site = process.env.SITE_URL
+        const body = { ...a.payload, to, ...(redirectTo ? { redirectTo } : {}), ...(site ? { appUrl: `${site.replace(/\/$/, "")}/app/invoicing/chain` } : {}) }
+        try {
+          const res = await fetch(`${url.replace(/\/$/, "")}/webhook/dr-nuoma-pranesimas`, { method: "POST", headers: { "Content-Type": "application/json", "X-Webhook-Secret": secret }, body: JSON.stringify(body) })
+          if (!res.ok) return done("failed", { to, error: `http_${res.status}` })
+          return done("sent", { to })
+        } catch (e) {
+          return done("failed", { to, error: String(e).slice(0, 200) })
+        }
+      },
+    }),
+
+    _chainRunResult: internalMutationGeneric({
+      args: { runId: v.id("staffing_invoicing_chainRuns"), status: v.union(v.literal("sent"), v.literal("failed"), v.literal("not_configured")), to: v.optional(v.string()), error: v.optional(v.string()) },
+      handler: async (ctx, a) => {
+        const db = invWriter(ctx)
+        if (!(await db.get("staffing_invoicing_chainRuns", a.runId))) return
+        await db.patch("staffing_invoicing_chainRuns", a.runId, { status: a.status, ...(a.to ? { to: a.to } : {}), ...(a.error ? { error: a.error } : {}), completedAt: Date.now() })
+      },
+    }),
+
+    // ---------------------------------------------------------------- purchase invoices
+
+    ...definePurchases(system, { functionsPath: path }),
 
     // ---------------------------------------------------------------- SitePro export
 

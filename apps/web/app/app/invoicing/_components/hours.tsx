@@ -3,6 +3,7 @@ import { StaffingInvoicingPermissions as P } from "@digimuza/staffing/invoicing/
 import { Can } from "@digimuza/system-core/react"
 import { useMutation, useQuery } from "convex/react"
 import { Clock, Plus, Trash2 } from "lucide-react"
+import Link from "next/link"
 import { useState, type FormEvent } from "react"
 import { EmptyState } from "@/components/app/empty-state"
 import { PageHeader } from "@/components/app/page-header"
@@ -56,7 +57,17 @@ export function HoursView() {
       />
       <InvoicingTabs />
       <Alert className="mb-4">
-        <AlertDescription>{t("invoicing.hours.adapterNote")}</AlertDescription>
+        <AlertDescription>
+          {t("invoicing.hours.adapterNote")}
+          {!!data?.unapprovedWeeks.length && (
+            <span className="mt-1 block text-marking-foreground dark:text-marking">
+              {t("invoicing.hours.unapproved").replace("{weeks}", data.unapprovedWeeks.join(", "))}{" "}
+              <Link href={`/app/timesheets/${projectId}`} className="underline">
+                {t("invoicing.hours.openTimesheets")}
+              </Link>
+            </span>
+          )}
+        </AlertDescription>
       </Alert>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <NativeSelect aria-label={t("invoicing.col.project")} value={projectId} onChange={setProjectId}>

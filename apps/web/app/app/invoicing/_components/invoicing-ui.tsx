@@ -59,7 +59,9 @@ export function InvoiceStatusBadge({ status, overdueDays }: { status: InvoiceSta
 
 const TABS: { href: string; label: MessageKey; exact?: boolean }[] = [
   { href: "/app/invoicing", label: "invoicing.tabs.invoices", exact: true },
+  { href: "/app/invoicing/chain", label: "invoicing.tabs.chain" },
   { href: "/app/invoicing/debts", label: "invoicing.tabs.debts" },
+  { href: "/app/invoicing/purchases", label: "invoicing.tabs.purchases" },
   { href: "/app/invoicing/hours", label: "invoicing.tabs.hours" },
   { href: "/app/invoicing/profitability", label: "invoicing.tabs.profitability" },
 ]
