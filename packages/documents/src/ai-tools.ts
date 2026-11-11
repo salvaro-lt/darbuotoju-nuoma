@@ -4,6 +4,7 @@
 //   defineAiAgent({ id: "assistant", ..., tools: [...documentsTools] })
 import { defineAiTool } from "@digimuza/system-core/ai"
 import { z } from "zod"
+import { canSeeDocument, viewerFor, visibleTagIds } from "./access"
 import { DocumentsPermissions } from "./manifest"
 import { dbOf, type SubmissionDoc } from "./shared"
 
@@ -16,13 +17,19 @@ export const documentsSearchTool = defineAiTool({
     query: z.string().trim().min(1).max(200).describe("Words to search for"),
     limit: z.number().int().min(1).max(20).optional().describe("How many results (1-20, default 8)"),
   }),
-  handler: async ({ db: raw }, input) => {
+  handler: async ({ db: raw, sys, actor }, input) => {
     const db = dbOf({ db: raw })
-    const rows = await db
-      .query("docDocuments")
-      .withSearchIndex("search", (q) => q.search("searchText", input.query).eq("trashed", false))
-      .take(input.limit ?? 8)
-    const names = async (table: "docTags" | "docCorrespondents" | "docTypes", ids: string[]) =>
+    const viewer = await viewerFor(sys, actor)
+    const tags = new Map((await db.query("docTags").collect()).map((t) => [t._id as string, t]))
+    const rows = (
+      await db
+        .query("docDocuments")
+        .withSearchIndex("search", (q) => q.search("searchText", input.query).eq("trashed", false))
+        .take(100)
+    )
+      .filter((d) => canSeeDocument(viewer, d, tags))
+      .slice(0, input.limit ?? 8)
+    const names = async (table: "docCorrespondents" | "docTypes", ids: string[]) =>
       (await Promise.all(ids.map((id) => db.get(table, id).catch(() => null)))).filter(Boolean).map((x) => x!.name)
     return Promise.all(
       rows.map(async (d) => ({
@@ -31,7 +38,7 @@ export const documentsSearchTool = defineAiTool({
         date: d.documentDate ?? null,
         correspondent: (await names("docCorrespondents", d.correspondentId ? [d.correspondentId] : []))[0] ?? null,
         type: (await names("docTypes", d.typeId ? [d.typeId] : []))[0] ?? null,
-        tags: await names("docTags", d.tagIds),
+        tags: visibleTagIds(viewer, d.tagIds, tags).map((id) => tags.get(id)?.name).filter(Boolean),
         excerpt: d.content.replace(/\s+/g, " ").slice(0, 300),
         link: `/app/documents/${d._id}`,
       })),

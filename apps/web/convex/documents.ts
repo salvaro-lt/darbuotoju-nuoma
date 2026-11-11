@@ -44,10 +44,19 @@ export const {
   reprocessDocument,
   addNote,
   deleteNote,
+  // archive: access (label grants are on createLabel / updateLabel)
+  shareDocument,
+  getAccessOptions,
   _processContext,
   _processDocument,
   _applyProcessing,
   _fileSignedDocument,
+  // email archive: every received email (Gavimas) filed as a document, per-inbox switch
+  getEmailArchive,
+  setInboxArchive,
+  _archiveEmail,
+  _fileEmail,
+  _addEmailInbox,
   // signing: templates and submissions
   listTemplates,
   getTemplate,

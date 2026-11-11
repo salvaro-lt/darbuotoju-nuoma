@@ -4,6 +4,7 @@ import { automationsEn, automationsLt } from "./automations-messages"
 import { ingestEn, ingestLt } from "./ingest-messages"
 import { crmEn, crmLt } from "./crm"
 import { documentsArchiveEn, documentsArchiveLt } from "./documents-archive-messages"
+import { documentsAccessEn, documentsAccessLt } from "./documents-access-messages"
 import { documentsSigningEn, documentsSigningLt } from "./documents-signing-messages"
 import { staffingEn, staffingLt } from "./staffing-messages"
 // Staffing areas: one import each below.
@@ -685,6 +686,7 @@ const lt = {
   "super.stopped": "Grįžote į Super",
   ...crmLt,
   ...documentsArchiveLt,
+  ...documentsAccessLt,
   ...staffingLt,
   // staffing areas (lt): one spread each below
   ...documentsSigningLt,
@@ -1364,6 +1366,7 @@ const en: Record<MessageKey, string> = {
   "super.stopped": "You're back to Super",
   ...crmEn,
   ...documentsArchiveEn,
+  ...documentsAccessEn,
   ...staffingEn,
   // staffing areas (en): one spread each below
   ...documentsSigningEn,

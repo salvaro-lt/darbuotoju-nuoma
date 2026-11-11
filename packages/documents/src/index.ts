@@ -13,14 +13,19 @@
 //   })
 import type { ConvexSystem } from "@digimuza/system-core/convex"
 import { defineArchive, type ArchiveOptions } from "./archive"
-import { defineSigning, type SigningOptions } from "./signing-functions"
+import { defineEmailArchive } from "./email"
+import { defineSigning, loadFont, type SigningOptions } from "./signing-functions"
 
 export { documents, DocumentsFlags, DocumentsPermissions, DOCUMENTS_MODULE_ID } from "./manifest"
 export { documentsTables, CUSTOM_FIELD_TYPES, type CustomFieldType } from "./tables"
 export { documentsTools, documentsSearchTool, documentsListSubmissionsTool } from "./ai-tools"
+export { documentsIngestConsumer, DOCUMENTS_CONSUMER_ID, type EmailArchiveInbox, type EmailArchiveOptions, type EmailArchiveSettings } from "./email"
+export { EMAIL_TAG, EMAIL_UPLOADER } from "./archive"
+export { canSeeDocument, canSeeTag, type Viewer } from "./access"
 export * from "./matching"
 export * from "./signing"
 export type {
+  AccessOptions,
   CustomFieldView,
   DocumentDetail,
   DocumentListResult,
@@ -43,7 +48,11 @@ export interface DocumentsOptions extends ArchiveOptions, SigningOptions {
 /** The documents module's Convex functions. Re-export them from the app's `convex/documents.ts`. */
 export function defineDocuments(system: ConvexSystem, options: DocumentsOptions) {
   const functionsModule = options.functionsModule ?? "documents"
-  return { ...defineArchive(system, { ...options, functionsModule }), ...defineSigning(system, { ...options, functionsModule }) }
+  return {
+    ...defineArchive(system, { ...options, functionsModule }),
+    ...defineSigning(system, { ...options, functionsModule }),
+    ...defineEmailArchive(system, { functionsModule, maxFileSize: options.maxFileSize ?? 50 * 1024 * 1024, font: () => loadFont(options.font) }),
+  }
 }
 
 export type DocumentsFunctions = ReturnType<typeof defineDocuments>

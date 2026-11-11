@@ -29,6 +29,12 @@ export interface TagDoc extends Rule {
   name: string
   color: string
   isInbox: boolean
+  access?: TagAccess
+  system?: "email"
+}
+export interface TagAccess {
+  userIds: string[]
+  roleIds: string[]
 }
 export interface CorrespondentDoc extends Rule {
   _id: CorrespondentId
@@ -74,7 +80,25 @@ export interface DocumentDoc {
   trashed: boolean
   submissionId?: SubmissionId
   addedBy: string
+  sharedUserIds?: string[]
+  sharedRoleIds?: string[]
+  emailKey?: string
+  parentId?: DocumentId
   updatedAt: number
+}
+export interface InboxArchiveDoc {
+  _id: GenericId<"docInboxArchive">
+  _creationTime: number
+  inboxId: string
+  store: boolean
+  updatedAt: number
+}
+export interface EmailQueueDoc {
+  _id: GenericId<"docEmailQueue">
+  _creationTime: number
+  emailKey: string
+  inboxNames: string[]
+  createdAt: number
 }
 export interface NoteDoc {
   _id: NoteId
@@ -185,6 +209,8 @@ type Docs = {
   docSubmitters: SubmitterDoc
   docSigningEvents: SigningEventDoc
   docCounters: CounterDoc
+  docInboxArchive: InboxArchiveDoc
+  docEmailQueue: EmailQueueDoc
 }
 export type Table = keyof Docs
 

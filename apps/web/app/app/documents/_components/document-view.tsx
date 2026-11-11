@@ -3,7 +3,7 @@ import type { CustomFieldView, DocumentDetail, DocumentsLabels } from "@digimuza
 import { DocumentsPermissions } from "@digimuza/documents/manifest"
 import { useCan } from "@digimuza/system-core/react"
 import { useMutation, useQuery } from "convex/react"
-import { ChevronRight, Download, ExternalLink, FileQuestion, Loader2, Plus, RefreshCw, RotateCcw, Signature, Trash2, TriangleAlert, X } from "lucide-react"
+import { ChevronRight, Download, ExternalLink, FileQuestion, Loader2, Lock, Mail, Paperclip, Plus, RefreshCw, RotateCcw, Share2, Signature, Trash2, TriangleAlert, X } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, type FormEvent, type KeyboardEvent } from "react"
@@ -26,8 +26,9 @@ import type { Id } from "@/convex/_generated/dataModel"
 import { openPdf, pageSizes } from "@/lib/documents/pdf"
 import { useT } from "@/lib/i18n/client"
 import type { MessageKey } from "@/lib/i18n/messages"
-import { LabelSelect, TagPicker } from "./labels-ui"
-import { formatBytes, submissionHref, templateHref, useDocumentsEnabled, useLabels, useSigningVisible } from "./use-documents"
+import { AccessPicker, grantNames, useAccessOptions, type Grants } from "./access-picker"
+import { LabelSelect, TagChip, TagPicker } from "./labels-ui"
+import { documentHref, formatBytes, submissionHref, templateHref, useDocumentsEnabled, useLabels, useSigningVisible } from "./use-documents"
 
 export function DocumentView({ documentId }: { documentId: string }) {
   const { t } = useT()
@@ -86,6 +87,8 @@ function Loaded({ detail, labels }: { detail: DocumentDetail; labels: DocumentsL
   const canUpdate = useCan(DocumentsPermissions.update)
   const canDelete = useCan(DocumentsPermissions.delete)
   const canTemplates = useCan(DocumentsPermissions.manageTemplates)
+  const canShare = useCan(DocumentsPermissions.share)
+  const [shareOpen, setShareOpen] = useState(false)
   const signing = useSigningVisible()
   const update = useMutation(api.documents.updateDocument)
   const setTrashed = useMutation(api.documents.setDocumentsTrashed)
@@ -150,6 +153,12 @@ function Loaded({ detail, labels }: { detail: DocumentDetail; labels: DocumentsL
               </a>
             </Button>
           )}
+          {canShare && !doc.trashed && (
+            <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
+              {doc.restricted ? <Lock /> : <Share2 />}
+              {t("docs.share")}
+            </Button>
+          )}
           {signing && canTemplates && isPdf && !doc.trashed && (
             <Button variant="outline" size="sm" onClick={() => setSignOpen(true)}>
               <Signature />
@@ -174,6 +183,19 @@ function Loaded({ detail, labels }: { detail: DocumentDetail; labels: DocumentsL
         <Alert>
           <Trash2 />
           <AlertDescription>{t("docs.inTrash")}</AlertDescription>
+        </Alert>
+      )}
+      {(doc.fromEmail || doc.parentId) && (
+        <Alert>
+          <Mail />
+          <AlertDescription className="flex flex-wrap items-center gap-x-3">
+            {doc.parentId ? t("docs.fromEmailAttachment") : t("docs.fromEmail")}
+            {doc.parentId && (
+              <Link href={documentHref(doc.parentId)} className="font-medium text-foreground underline underline-offset-2">
+                {t("docs.openEmail")}
+              </Link>
+            )}
+          </AlertDescription>
         </Alert>
       )}
       {detail.submissionId && (
@@ -290,11 +312,12 @@ function Loaded({ detail, labels }: { detail: DocumentDetail; labels: DocumentsL
           </TabsContent>
 
           <TabsContent value="info" className="pt-3">
-            <InfoTab detail={detail} date={date} canReprocess={editable} />
+            <InfoTab detail={detail} labels={labels} date={date} canReprocess={editable} canShare={canShare} />
           </TabsContent>
         </Tabs>
       </div>
 
+      {shareOpen && <ShareDialog detail={detail} onClose={() => setShareOpen(false)} />}
       {signOpen && detail.fileUrl && <SendForSigningDialog documentId={doc.id} fileUrl={detail.fileUrl} defaultName={doc.title} onClose={() => setSignOpen(false)} onCreated={(id) => router.push(templateHref(id))} />}
     </div>
   )
@@ -472,12 +495,96 @@ function Notes({ documentId, notes, canAdd, canDeleteAny, date }: { documentId: 
   )
 }
 
-function InfoTab({ detail, date, canReprocess }: { detail: DocumentDetail; date: (ms: number) => string; canReprocess: boolean }) {
+function AccessSummary({ detail, labels, canShare }: { detail: DocumentDetail; labels: DocumentsLabels; canShare: boolean }) {
+  const { t } = useT()
+  const a = detail.access
+  const shared = a.sharedUserIds.length + a.sharedRoleIds.length > 0
+  // Only people who may share (or manage labels) can list roles and users; others see counts.
+  const options = useAccessOptions(canShare && shared)
+  if (!detail.document.restricted) return <span>{t("docs.info.access.everyone")}</span>
+  const tags = a.restrictedTagIds.map((id) => labels.tags.find((x) => x.id === id)).filter((x) => x !== undefined)
+  const names = grantNames(options, { userIds: a.sharedUserIds, roleIds: a.sharedRoleIds })
+  return (
+    <div className="grid gap-1.5">
+      <span className="flex items-center gap-1.5 font-medium">
+        <Lock className="size-3.5" aria-hidden />
+        {t("docs.info.access.restricted")}
+      </span>
+      {tags.length > 0 && (
+        <span className="flex flex-wrap items-center gap-1">
+          <span className="text-muted-foreground">{t("docs.info.access.byTags")}:</span>
+          {tags.map((tag) => (
+            <TagChip key={tag.id} tag={tag} />
+          ))}
+        </span>
+      )}
+      {shared && (
+        <span>
+          <span className="text-muted-foreground">{t("docs.info.access.sharedWith")}: </span>
+          {names.length ? names.join(", ") : <span className="tabular-nums">{a.sharedRoleIds.length + a.sharedUserIds.length}</span>}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function ShareDialog({ detail, onClose }: { detail: DocumentDetail; onClose: () => void }) {
+  const { t } = useT()
+  const share = useMutation(api.documents.shareDocument)
+  const options = useAccessOptions()
+  const { run, busy } = useAction()
+  const initial: Grants = { userIds: detail.access.sharedUserIds, roleIds: detail.access.sharedRoleIds }
+  const [grants, setGrants] = useState<Grants>(initial)
+  const wasShared = initial.userIds.length + initial.roleIds.length > 0
+  const empty = grants.userIds.length + grants.roleIds.length === 0
+  const save = async (g: Grants, success: string) => {
+    if (await run(() => share({ documentId: detail.document.id as Id<"docDocuments">, ...g }), { success })) onClose()
+  }
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <form
+          className="grid gap-5"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void save(grants, empty ? t("docs.share.stopped") : t("docs.share.saved"))
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>{t("docs.share.title")}</DialogTitle>
+            <DialogDescription>{t("docs.share.lead")}</DialogDescription>
+          </DialogHeader>
+          <AccessPicker value={grants} onChange={setGrants} options={options} disabled={busy} />
+          <DialogFooter className="gap-2 sm:justify-between">
+            {wasShared ? (
+              <Button type="button" variant="ghost" disabled={busy} onClick={() => void save({ userIds: [], roleIds: [] }, t("docs.share.stopped"))}>
+                {t("docs.share.stop")}
+              </Button>
+            ) : (
+              <span />
+            )}
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+              <Button type="button" variant="outline" onClick={onClose}>
+                {t("docs.cancel")}
+              </Button>
+              <Button type="submit" disabled={busy || (!wasShared && empty)}>
+                {t("docs.save")}
+              </Button>
+            </div>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function InfoTab({ detail, labels, date, canReprocess, canShare }: { detail: DocumentDetail; labels: DocumentsLabels; date: (ms: number) => string; canReprocess: boolean; canShare: boolean }) {
   const { t } = useT()
   const reprocess = useMutation(api.documents.reprocessDocument)
   const { run, busy } = useAction()
   const d = detail.document
   const rows: [string, React.ReactNode][] = [
+    [t("docs.info.access"), <AccessSummary detail={detail} labels={labels} canShare={canShare} />],
     [t("docs.info.asn"), <span className="tabular-nums">#{d.asn}</span>],
     [t("docs.info.file"), <span className="break-all">{d.fileName}</span>],
     [t("docs.info.size"), <span className="tabular-nums">{formatBytes(d.size)}</span>],
@@ -497,6 +604,24 @@ function InfoTab({ detail, date, canReprocess }: { detail: DocumentDetail; date:
           </div>
         ))}
       </dl>
+      {detail.attachments.length > 0 && (
+        <section className="grid gap-2">
+          <h3 className="flex items-center gap-1.5 text-sm font-medium">
+            <Paperclip className="size-3.5" aria-hidden />
+            {t("docs.attachments")}
+          </h3>
+          <ul className="grid divide-y rounded-lg border text-sm">
+            {detail.attachments.map((x) => (
+              <li key={x.id}>
+                <Link href={documentHref(x.id)} className="flex items-center justify-between gap-3 px-3 py-2 hover:bg-muted/60">
+                  <span className="min-w-0 truncate">{x.fileName}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{formatBytes(x.size)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {detail.processingError && (
         <Alert variant="destructive">
           <TriangleAlert />

@@ -3,9 +3,9 @@ import { CUSTOM_FIELD_TYPES, MATCH_ALGORITHMS, type CustomFieldType, type Custom
 import { DocumentsFlags } from "@digimuza/documents/manifest"
 import { useFeatureFlag } from "@digimuza/system-core/react"
 import { useMutation, useQuery } from "convex/react"
-import { Building2, FileType2, Inbox, LayoutList, ListPlus, Pencil, Plus, Tags, Trash2 } from "lucide-react"
+import { Building2, FileType2, Inbox, LayoutList, ListPlus, Lock, Mail, Pencil, Plus, Tags, Trash2 } from "lucide-react"
 import Link from "next/link"
-import { useDeferredValue, useState, type FormEvent, type ReactNode } from "react"
+import { useCallback, useDeferredValue, useState, type FormEvent, type ReactNode } from "react"
 import { EmptyState } from "@/components/app/empty-state"
 import { PageHeader } from "@/components/app/page-header"
 import { useAction } from "@/components/app/use-action"
@@ -27,6 +27,8 @@ import type { Id } from "@/convex/_generated/dataModel"
 import { useT } from "@/lib/i18n/client"
 import type { MessageKey } from "@/lib/i18n/messages"
 import { documentHref, useDocumentsEnabled, useLabels } from "./use-documents"
+import { AccessPicker, useAccessOptions, type Grants } from "./access-picker"
+import { EmailArchive } from "./email-archive"
 import { TagChip } from "./labels-ui"
 
 // A calm, distinguishable palette for new tags; any hex colour is accepted.
@@ -36,6 +38,9 @@ export function LabelsSettings() {
   const { t } = useT()
   const enabled = useDocumentsEnabled()
   const labels = useLabels()
+  const [tab, setTab] = useState("tag")
+  const [editTagId, setEditTagId] = useState<string | null>(null)
+  const clearEditTag = useCallback(() => setEditTagId(null), [])
   if (!enabled) return <p className="text-sm text-muted-foreground">{t("docs.disabled")}</p>
   return (
     <div>
@@ -43,16 +48,20 @@ export function LabelsSettings() {
       {!labels ? (
         <Skeleton className="h-80 w-full rounded-xl" />
       ) : (
-        <Tabs defaultValue="tag">
+        <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="max-w-full overflow-x-auto">
             <TabsTrigger value="tag">{t("docs.labels.tab.tags")}</TabsTrigger>
             <TabsTrigger value="correspondent">{t("docs.labels.tab.correspondents")}</TabsTrigger>
             <TabsTrigger value="type">{t("docs.labels.tab.types")}</TabsTrigger>
             <TabsTrigger value="fields">{t("docs.labels.tab.fields")}</TabsTrigger>
             <TabsTrigger value="views">{t("docs.labels.tab.views")}</TabsTrigger>
+            <TabsTrigger value="email">
+              <Mail aria-hidden />
+              {t("docs.labels.tab.email")}
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="tag" className="pt-4">
-            <LabelList kind="tag" items={labels.tags} icon={<Tags />} />
+            <LabelList kind="tag" items={labels.tags} icon={<Tags />} openId={editTagId} onOpened={clearEditTag} />
           </TabsContent>
           <TabsContent value="correspondent" className="pt-4">
             <LabelList kind="correspondent" items={labels.correspondents} icon={<Building2 />} />
@@ -66,6 +75,14 @@ export function LabelsSettings() {
           <TabsContent value="views" className="pt-4">
             <ViewList views={labels.views} labels={labels} />
           </TabsContent>
+          <TabsContent value="email" className="pt-4">
+            <EmailArchive
+              onEditTag={(id) => {
+                setEditTagId(id)
+                setTab("tag")
+              }}
+            />
+          </TabsContent>
         </Tabs>
       )}
     </div>
@@ -74,9 +91,16 @@ export function LabelsSettings() {
 
 // ---------------------------------------------------------------- tags, correspondents, types
 
-function LabelList({ kind, items, icon }: { kind: LabelKind; items: (LabelView | TagView)[]; icon: ReactNode }) {
+function LabelList({ kind, items, icon, openId, onOpened }: { kind: LabelKind; items: (LabelView | TagView)[]; icon: ReactNode; openId?: string | null; onOpened?: () => void }) {
   const { t } = useT()
   const [editing, setEditing] = useState<LabelView | TagView | "new" | null>(null)
+  // Opened from elsewhere (the email archive's "change who can see it").
+  const requested = openId ? items.find((l) => l.id === openId) : undefined
+  const open = editing ?? requested ?? null
+  const close = () => {
+    setEditing(null)
+    onOpened?.()
+  }
   const [deleting, setDeleting] = useState<LabelView | null>(null)
   const del = useMutation(api.documents.deleteLabel)
   const { run, busy } = useAction()
@@ -107,7 +131,21 @@ function LabelList({ kind, items, icon }: { kind: LabelKind; items: (LabelView |
               <TableBody>
                 {items.map((l) => (
                   <TableRow key={l.id}>
-                    <TableCell className="px-4">{"color" in l ? <TagChip tag={l} /> : <span className="font-medium">{l.name}</span>}</TableCell>
+                    <TableCell className="px-4">
+                      {"color" in l ? (
+                        <span className="flex items-center gap-1.5">
+                          <TagChip tag={l} />
+                          {l.access && (
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title={t("docs.labels.restricted")}>
+                              <Lock className="size-3.5" aria-hidden />
+                              <span className="sr-only sm:not-sr-only">{t("docs.labels.restricted")}</span>
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="font-medium">{l.name}</span>
+                      )}
+                    </TableCell>
                     <TableCell className="px-4 text-muted-foreground">{t(`docs.algo.${l.algorithm}` as MessageKey)}</TableCell>
                     <TableCell className="max-w-64 truncate px-4 font-mono text-xs">{l.algorithm === "none" || l.algorithm === "auto" ? "" : l.match}</TableCell>
                     <TableCell className="px-4 text-right tabular-nums">{l.count}</TableCell>
@@ -128,7 +166,7 @@ function LabelList({ kind, items, icon }: { kind: LabelKind; items: (LabelView |
           </div>
         </>
       )}
-      {editing && <LabelDialog kind={kind} label={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
+      {open && <LabelDialog kind={kind} label={open === "new" ? null : open} onClose={close} />}
       <ConfirmDelete
         open={!!deleting}
         name={deleting?.name ?? ""}
@@ -158,12 +196,15 @@ function LabelDialog({ kind, label, onClose }: { kind: LabelKind; label: LabelVi
   const [algorithm, setAlgorithm] = useState<MatchAlgorithm>(label?.algorithm ?? "any")
   const [match, setMatch] = useState(label?.match ?? "")
   const [caseSensitive, setCaseSensitive] = useState(label?.caseSensitive ?? false)
+  const [restricted, setRestricted] = useState(Boolean(tag?.access))
+  const [grants, setGrants] = useState<Grants>(() => tag?.access ?? { userIds: [], roleIds: [] })
+  const accessOptions = useAccessOptions(kind === "tag" && restricted)
   const needsMatch = algorithm !== "none" && algorithm !== "auto"
 
   async function submit(e: FormEvent) {
     e.preventDefault()
     const rule = { match: needsMatch ? match : "", algorithm, caseSensitive }
-    const extra = kind === "tag" ? { color, isInbox } : {}
+    const extra = kind === "tag" ? { color, isInbox, access: restricted ? grants : null } : {}
     const res = label
       ? await run(() => update({ kind, id: label.id, name, ...rule, ...extra }), { success: t("docs.labels.saved") })
       : await run(() => create({ kind, name, ...rule, ...extra }), { success: t("docs.labels.created") })
@@ -213,6 +254,19 @@ function LabelDialog({ kind, label, onClose }: { kind: LabelKind; label: LabelVi
                     <FieldDescription>{t("docs.labels.inboxHint")}</FieldDescription>
                   </div>
                 </Field>
+                <div className="grid gap-3 rounded-lg border p-3">
+                  <Field orientation="horizontal">
+                    <Switch id="label-restricted" checked={restricted} onCheckedChange={setRestricted} />
+                    <div className="grid gap-0.5">
+                      <Label htmlFor="label-restricted" className="flex items-center gap-1.5">
+                        <Lock className="size-3.5" aria-hidden />
+                        {t("docs.labels.visibility.restricted")}
+                      </Label>
+                      <FieldDescription>{restricted ? t("docs.labels.visibility.restrictedHint") : t("docs.labels.visibility.everyone")}</FieldDescription>
+                    </div>
+                  </Field>
+                  {restricted && <AccessPicker value={grants} onChange={setGrants} options={accessOptions} />}
+                </div>
               </>
             )}
             <Field>

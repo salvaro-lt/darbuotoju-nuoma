@@ -9,6 +9,7 @@
 import { internalActionGeneric, internalMutationGeneric, internalQueryGeneric, makeFunctionReference, mutationGeneric, queryGeneric } from "convex/server"
 import { v } from "convex/values"
 import { isFeatureEnabled, randomToken, recordAudit, sha256Hex, type ConvexSystem } from "@digimuza/system-core/convex"
+import { canSeeDocument, viewerFor } from "./access"
 import { DocumentsFlags, DocumentsPermissions } from "./manifest"
 import { fieldProblems, MAX_ROLES, valueProblems, type PageSize, type SigningField, type SigningValue, type SubmissionStatus, type SubmitterStatus } from "./signing"
 import { buildSignedPdfBytes } from "./stamp"
@@ -248,10 +249,32 @@ export function defineSigning(system: ConvexSystem, options: SigningOptions & { 
     return res
   }
 
-  async function requireTemplate(db: Db, id: string, op: string): Promise<TemplateDoc> {
+  /**
+   * Templates made from an archive document follow that document's access: a template
+   * (and its submissions) is hidden when its source document is hidden from the viewer.
+   */
+  async function templateAccess(db: Db, res: Caller) {
+    const viewer = await viewerFor(res.sys, res.actor)
+    if (viewer.all) return () => Promise.resolve(true)
+    const tags = new Map((await db.query("docTags").collect()).map((t) => [t._id as string, t]))
+    return async (t: Pick<TemplateDoc, "documentId"> | null) => {
+      const source = t?.documentId ? await getDoc(db, "docDocuments", t.documentId) : null
+      return !source || canSeeDocument(viewer, source, tags)
+    }
+  }
+
+  type Caller = { sys: Parameters<typeof viewerFor>[0]; actor: Parameters<typeof viewerFor>[1] }
+
+  /** The template, if it exists and the caller may see its source document (hidden ones are "not found"). */
+  async function requireTemplate(db: Db, id: string, op: string, caller: Caller): Promise<TemplateDoc> {
     const t = await getDoc(db, "docTemplates", id)
-    if (!t) fail("NOT_FOUND", "template_not_found", op)
+    if (!t || !(await (await templateAccess(db, caller))(t))) fail("NOT_FOUND", "template_not_found", op)
     return t
+  }
+
+  /** A submission's template must be visible to the caller (see `templateAccess`). */
+  async function requireVisibleSubmission(db: Db, s: SubmissionDoc, op: string, caller: Caller) {
+    if (!(await (await templateAccess(db, caller))(await getDoc(db, "docTemplates", s.templateId)))) fail("NOT_FOUND", "submission_not_found", op)
   }
 
   /** The signer behind a token, if the module and signing are on. */
@@ -290,13 +313,15 @@ export function defineSigning(system: ConvexSystem, options: SigningOptions & { 
     listTemplates: queryGeneric({
       args: { ...actorArgs, archived: v.optional(v.boolean()) },
       handler: async (ctx, a): Promise<TemplateView[]> => {
-        await guard(ctx, DocumentsPermissions.signingRead, a)
+        const res = await guard(ctx, DocumentsPermissions.signingRead, a)
         const db = dbOf(ctx)
-        const rows = await db
+        const visible = await templateAccess(db, res)
+        const all = await db
           .query("docTemplates")
           .withIndex("by_archived", (q) => q.eq("archived", a.archived ?? false))
           .order("desc")
           .take(500)
+        const rows = (await Promise.all(all.map(async (t) => ((await visible(t)) ? t : null)))).filter((t) => t !== null)
         return Promise.all(
           rows.map(async (t) => ({
             id: t._id,
@@ -323,10 +348,10 @@ export function defineSigning(system: ConvexSystem, options: SigningOptions & { 
     getTemplate: queryGeneric({
       args: { ...actorArgs, templateId: v.string() },
       handler: async (ctx, a): Promise<TemplateDetail | null> => {
-        await guard(ctx, DocumentsPermissions.signingRead, a)
+        const res = await guard(ctx, DocumentsPermissions.signingRead, a)
         const db = dbOf(ctx)
         const t = await getDoc(db, "docTemplates", a.templateId)
-        if (!t) return null
+        if (!t || !(await (await templateAccess(db, res))(t))) return null
         const subs = await db
           .query("docSubmissions")
           .withIndex("by_template", (q) => q.eq("templateId", t._id))
@@ -375,9 +400,11 @@ export function defineSigning(system: ConvexSystem, options: SigningOptions & { 
         let storageId: StorageId
         let fileName: string
         if (a.documentId) {
-          await system.requirePermission(ctx, DocumentsPermissions.read, opts(a))
+          const reader = await system.requirePermission(ctx, DocumentsPermissions.read, opts(a))
+          const viewer = await viewerFor(reader.sys, reader.actor)
           const d = await getDoc(db, "docDocuments", a.documentId)
-          if (!d || d.trashed) fail("NOT_FOUND", "document_not_found", op, ["documentId"])
+          const tags = new Map((await db.query("docTags").collect()).map((t) => [t._id as string, t]))
+          if (!d || d.trashed || !canSeeDocument(viewer, d, tags)) fail("NOT_FOUND", "document_not_found", op, ["documentId"])
           storageId = d.storageId
           fileName = d.fileName
         } else if (a.storageId) {
@@ -412,7 +439,7 @@ export function defineSigning(system: ConvexSystem, options: SigningOptions & { 
         const { sys, actor } = await guard(ctx, DocumentsPermissions.manageTemplates, a)
         const op = sys.operationId
         const db = dbOf(ctx)
-        const t = await requireTemplate(db, a.templateId, op)
+        const t = await requireTemplate(db, a.templateId, op, { sys, actor })
         if (t.archived) fail("CONFLICT", "template_archived", op)
         const patch: Partial<TemplateDoc> = {}
         if (a.name !== undefined) patch.name = cleanText(a.name, 200, "name", op)!
@@ -433,7 +460,7 @@ export function defineSigning(system: ConvexSystem, options: SigningOptions & { 
       handler: async (ctx, a): Promise<{ operationId: string }> => {
         const { sys, actor } = await guard(ctx, DocumentsPermissions.manageTemplates, a)
         const db = dbOf(ctx)
-        const t = await requireTemplate(db, a.templateId, sys.operationId)
+        const t = await requireTemplate(db, a.templateId, sys.operationId, { sys, actor })
         await db.patch("docTemplates", t._id, { archived: a.archived, updatedAt: Date.now() })
         await recordAudit(sys, actor, { action: a.archived ? "documents.template.archive" : "documents.template.restore", targetType: "docTemplates", targetId: t._id })
         return { operationId: sys.operationId }
@@ -462,7 +489,7 @@ export function defineSigning(system: ConvexSystem, options: SigningOptions & { 
         const { sys, actor } = await guard(ctx, DocumentsPermissions.signingSend, a)
         const op = sys.operationId
         const db = dbOf(ctx)
-        const t = await requireTemplate(db, a.templateId, op)
+        const t = await requireTemplate(db, a.templateId, op, { sys, actor })
         if (t.archived) fail("CONFLICT", "template_archived", op)
         if (!t.fields.some((f) => f.type === "signature" || f.type === "initials")) fail("VALIDATION", "no_signature_field", op, ["fields"])
         const problems = fieldProblems(t.fields, t.roles.length, t.pages.length)
@@ -526,7 +553,7 @@ export function defineSigning(system: ConvexSystem, options: SigningOptions & { 
     listSubmissions: queryGeneric({
       args: { ...actorArgs, status: v.optional(v.string()), templateId: v.optional(v.id("docTemplates")), limit: v.optional(v.number()) },
       handler: async (ctx, a): Promise<SubmissionView[]> => {
-        await guard(ctx, DocumentsPermissions.signingRead, a)
+        const res = await guard(ctx, DocumentsPermissions.signingRead, a)
         const db = dbOf(ctx)
         const limit = Math.min(Math.max(a.limit ?? 200, 1), 500)
         const templateId = a.templateId
@@ -537,7 +564,9 @@ export function defineSigning(system: ConvexSystem, options: SigningOptions & { 
               .order("desc")
               .take(limit)
           : await db.query("docSubmissions").order("desc").take(limit)
-        const views = await Promise.all(rows.map((s) => submissionView(db, s)))
+        const visible = await templateAccess(db, res)
+        const shown = (await Promise.all(rows.map(async (s) => ((await visible(await getDoc(db, "docTemplates", s.templateId))) ? s : null)))).filter((s) => s !== null)
+        const views = await Promise.all(shown.map((s) => submissionView(db, s)))
         return a.status ? views.filter((s) => s.status === a.status) : views
       },
     }),
@@ -545,10 +574,10 @@ export function defineSigning(system: ConvexSystem, options: SigningOptions & { 
     getSubmission: queryGeneric({
       args: { ...actorArgs, submissionId: v.string() },
       handler: async (ctx, a): Promise<SubmissionDetail | null> => {
-        await guard(ctx, DocumentsPermissions.signingRead, a)
+        const res = await guard(ctx, DocumentsPermissions.signingRead, a)
         const db = dbOf(ctx)
         const s = await getDoc(db, "docSubmissions", a.submissionId)
-        if (!s) return null
+        if (!s || !(await (await templateAccess(db, res))(await getDoc(db, "docTemplates", s.templateId)))) return null
         const view = await submissionView(db, s)
         const subs = await submittersOf(db, s._id)
         const events = await db
@@ -581,6 +610,7 @@ export function defineSigning(system: ConvexSystem, options: SigningOptions & { 
         const db = dbOf(ctx)
         const s = await getDoc(db, "docSubmissions", a.submissionId)
         if (!s) fail("NOT_FOUND", "submission_not_found", op)
+        await requireVisibleSubmission(db, s, op, { sys, actor })
         if (s.status !== "pending") fail("CONFLICT", "not_pending", op)
         await db.patch("docSubmissions", s._id, { status: "cancelled" })
         await event(db, s._id, "cancelled", undefined, await displayName(sys as never, actor))
@@ -599,7 +629,9 @@ export function defineSigning(system: ConvexSystem, options: SigningOptions & { 
         const sub = await getDoc(db, "docSubmitters", a.submitterId)
         if (!sub) fail("NOT_FOUND", "submitter_not_found", op)
         const s = await getDoc(db, "docSubmissions", sub.submissionId)
-        if (!s || effectiveStatus(s) !== "pending") fail("CONFLICT", "not_pending", op)
+        if (!s) fail("NOT_FOUND", "submission_not_found", op)
+        await requireVisibleSubmission(db, s, op, { sys, actor })
+        if (effectiveStatus(s) !== "pending") fail("CONFLICT", "not_pending", op)
         if (sub.status !== "pending" && sub.status !== "opened") fail("CONFLICT", "signer_not_active", op)
         const token = await issueToken(db, sub._id)
         if (a.sendEmail ?? true) await scheduleInvite(ctx, sub._id, token)
@@ -906,6 +938,7 @@ export function defineSigning(system: ConvexSystem, options: SigningOptions & { 
         const db = dbOf(ctx)
         const s = await getDoc(db, "docSubmissions", a.submissionId)
         if (!s) fail("NOT_FOUND", "submission_not_found", sys.operationId)
+        await requireVisibleSubmission(db, s, sys.operationId, { sys, actor })
         if (s.status !== "completed" || s.signedStorageId) fail("CONFLICT", "nothing_to_finalize", sys.operationId)
         await ctx.scheduler.runAfter(0, ref("_finalizeSubmission") as never, { submissionId: s._id } as never)
         await recordAudit(sys, actor, { action: "documents.submission.retry", targetType: "docSubmissions", targetId: s._id })
@@ -950,7 +983,7 @@ export function defineSigning(system: ConvexSystem, options: SigningOptions & { 
   }
 }
 
-async function loadFont(font: SigningOptions["font"]): Promise<Uint8Array | null> {
+export async function loadFont(font: SigningOptions["font"]): Promise<Uint8Array | null> {
   if (!font) return null
   try {
     if (typeof font === "function") return await font()

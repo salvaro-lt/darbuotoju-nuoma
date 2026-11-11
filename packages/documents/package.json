@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./manifest": "./src/manifest.ts",
+    "./email": "./src/email.ts",
     "./matching": "./src/matching.ts",
     "./signing": "./src/signing.ts"
   },

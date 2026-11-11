@@ -24,6 +24,9 @@ export const signingFieldValidator = v.object({
 export const pageSizeValidator = v.object({ width: v.number(), height: v.number() })
 export const customFieldTypeValidator = v.union(...CUSTOM_FIELD_TYPES.map((t) => v.literal(t)))
 export const matchAlgorithmValidator = algorithm
+/** Who may see a restricted label. Empty lists: only holders of `documents:document:all`. */
+export const tagAccessValidator = v.object({ userIds: v.array(v.string()), roleIds: v.array(v.string()) })
+
 export const viewFilterValidator = v.object({
   search: v.optional(v.string()),
   tagIds: v.optional(v.array(v.string())),
@@ -48,6 +51,10 @@ export const documentsTables = {
     color: v.string(),
     /** New uploads get every inbox tag until someone reviews them. */
     isInbox: v.boolean(),
+    /** Absent: everyone with read access sees the label. Present: restricted to these users and roles. */
+    access: v.optional(tagAccessValidator),
+    /** Set on labels the module manages itself: "email" is the label of archived mail. */
+    system: v.optional(v.literal("email")),
     ...rule,
   }).index("by_name", ["name"]),
 
@@ -92,9 +99,17 @@ export const documentsTables = {
     /** Set when the document came from a completed signing submission. */
     submissionId: v.optional(v.id("docSubmissions")),
     addedBy: v.string(),
+    /** Shared with these users / roles: then only they (plus label grants, uploader, admins) see it. */
+    sharedUserIds: v.optional(v.array(v.string())),
+    sharedRoleIds: v.optional(v.array(v.string())),
+    /** Set on documents filed from a received email (Resend email id); attachments carry `parentId`. */
+    emailKey: v.optional(v.string()),
+    parentId: v.optional(v.id("docDocuments")),
     updatedAt: v.number(),
   })
     .index("by_trashed", ["trashed"])
+    .index("by_email", ["emailKey"])
+    .index("by_parent", ["parentId"])
     .index("by_sha", ["sha256"])
     .index("by_asn", ["asn"])
     .index("by_correspondent", ["correspondentId", "trashed"])
@@ -193,6 +208,12 @@ export const documentsTables = {
     at: v.number(),
     detail: v.optional(v.string()),
   }).index("by_submission", ["submissionId", "at"]),
+
+  /** Inboxes whose received mail is not filed into the archive (on by default: rows only for changes). */
+  docInboxArchive: defineTable({ inboxId: v.string(), store: v.boolean(), updatedAt: v.number() }).index("by_inbox", ["inboxId"]),
+
+  /** Received emails being filed (between the ingest delivery and `_fileEmail`): the inboxes they reached. */
+  docEmailQueue: defineTable({ emailKey: v.string(), inboxNames: v.array(v.string()), createdAt: v.number() }).index("by_email", ["emailKey"]),
 
   /** Single row: the last archive serial number handed out. */
   docCounters: defineTable({ key: v.string(), value: v.number() }).index("by_key", ["key"]),

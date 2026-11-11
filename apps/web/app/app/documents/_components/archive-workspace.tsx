@@ -11,6 +11,7 @@ import {
   File as FileIcon,
   LayoutGrid,
   Loader2,
+  Lock,
   MoreHorizontal,
   PenLine,
   Plus,
@@ -536,6 +537,17 @@ function StatusLine({ d }: { d: DocumentView }) {
   return null
 }
 
+/** Not visible to every reader: a restricted label or a share. */
+function RestrictedMark() {
+  const { t } = useT()
+  return (
+    <span title={t("docs.labels.restricted")} className="mr-1 inline-flex align-[-2px] text-muted-foreground">
+      <Lock className="size-3.5" aria-hidden />
+      <span className="sr-only">{t("docs.labels.restricted")}</span>
+    </span>
+  )
+}
+
 function DocumentGrid({ docs, labels, selected, onToggle }: { docs: DocumentView[]; labels: DocumentsLabels; selected: Set<string> | null; onToggle: (id: string) => void }) {
   const { t, locale } = useT()
   const name = (id: string | null, from: { id: string; name: string }[]) => (id ? from.find((x) => x.id === id)?.name : undefined)
@@ -560,7 +572,10 @@ function DocumentGrid({ docs, labels, selected, onToggle }: { docs: DocumentView
                 <span className="absolute right-2 bottom-2 rounded-md bg-background/90 px-1.5 py-0.5 text-[0.7rem] font-medium text-muted-foreground tabular-nums">#{d.asn}</span>
               </div>
               <div className="grid flex-1 content-start gap-1.5 p-3">
-                <p className="line-clamp-2 text-sm leading-snug font-medium">{d.title}</p>
+                <p className="line-clamp-2 text-sm leading-snug font-medium">
+                  {d.restricted && <RestrictedMark />}
+                  {d.title}
+                </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {[correspondent, d.documentDate ? formatDate(Date.parse(`${d.documentDate}T00:00:00Z`), locale) : t("docs.noDate")].filter(Boolean).join(" · ")}
                 </p>
@@ -632,6 +647,7 @@ function DocumentTable({
                   <Link href={documentHref(d.id)} className="flex items-center gap-2 font-medium underline-offset-2 hover:underline" onClick={(e) => e.stopPropagation()}>
                     <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                     <span className="max-w-[36ch] truncate">{d.title}</span>
+                    {d.restricted && <RestrictedMark />}
                   </Link>
                   {(d.processing !== "done" || d.fromSigning) && (
                     <div className="mt-1">
