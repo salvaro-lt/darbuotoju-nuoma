@@ -17,7 +17,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
   return (
     <AuthShell>
-      <h1 className="text-3xl font-semibold tracking-tight">{invite ? t("invite.title") : t("signIn.title")}</h1>
+      <h1 className="font-stencil-title text-[2.6rem]">{invite ? t("invite.title") : t("signIn.title")}</h1>
       <p className="-mt-2 text-muted-foreground">{invite ? t("invite.lead") : t("signIn.lead")}</p>
 
       {state === "no-access" && (

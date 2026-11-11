@@ -52,6 +52,7 @@ import { AI_CHAT_PERMISSION, AI_MODULE_ID } from "@/lib/ai/api"
 import { NotificationsNavItem } from "@/components/notifications/notification-bell"
 import { SearchNavButton } from "@/components/search/command-palette"
 import { LinkPending } from "@/components/app/link-pending"
+import { FrameRulerVertical } from "@/components/app/frame-ruler"
 
 /** Live: links appear and disappear as roles, modules and flags change. */
 export function AppSidebar() {
@@ -96,7 +97,7 @@ export function AppSidebar() {
             <SidebarMenuButton size="lg" asChild>
               <Link href="/app">
                 <BrandMark size="sm" />
-                <span className="truncate font-semibold">{brand.name}</span>
+                <span className="label-marking truncate text-[15px] tracking-[0.04em]">{brand.name}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -107,7 +108,8 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="relative pr-4 group-data-[collapsible=icon]:pr-0">
+        <FrameRulerVertical className="group-data-[collapsible=icon]:hidden" />
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>

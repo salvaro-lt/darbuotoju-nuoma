@@ -15,7 +15,7 @@ export default async function InvitePage({ searchParams }: { searchParams: Promi
   return (
     <AuthShell>
       <InviteSymbol />
-      <h1 className="text-3xl font-semibold tracking-tight">{t("invite.title")}</h1>
+      <h1 className="font-stencil-title text-[2.6rem]">{t("invite.title")}</h1>
       <p className="-mt-2 text-muted-foreground">{t("invite.lead")}</p>
       <PrimaryLink href={`/sign-in?invite=${encodeURIComponent(token)}`}>{t("invite.button")}</PrimaryLink>
       <p className="text-sm text-muted-foreground">{t("invite.note")}</p>

@@ -17,13 +17,13 @@ export const brand = {
   /** Path under /public, e.g. "/brand/logo.svg". null shows a monogram from `name`. */
   logo: null as string | null,
   /** Primary action colour. Each must keep 4.5:1 contrast with `accentText`. */
-  accent: { light: "#2f5d50", dark: "#7fb8a4" },
-  accentText: { light: "#ffffff", dark: "#0f201a" },
+  accent: { light: "#9a3a1f", dark: "#e8845c" },
+  accentText: { light: "#ffffff", dark: "#1c0d07" },
   /**
    * Radix Themes accent for the WorkOS account widgets, the closest named scale
    * to `accent` (see https://www.radix-ui.com/colors).
    */
-  widgetAccent: "jade" as const,
+  widgetAccent: "tomato" as const,
 } as const
 
 export type Brand = typeof brand
