@@ -52,6 +52,7 @@
     "radix-ui": "^1.8.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "read-excel-file": "^9.3.14",
     "remark-gfm": "^4.0.1",
     "server-only": "^0.0.1",
     "shadcn": "^4.23.0",

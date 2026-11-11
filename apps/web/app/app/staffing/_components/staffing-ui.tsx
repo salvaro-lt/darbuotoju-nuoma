@@ -38,26 +38,35 @@ export function useTradeName() {
   return (t: { nameLt: string; nameEn: string }) => (locale === "en" ? t.nameEn : t.nameLt)
 }
 
-const CERT_VARIANT: Record<CertificateStatus, "secondary" | "outline" | "destructive" | "default"> = {
-  valid: "secondary",
-  expiring60: "outline",
-  expiring30: "outline",
-  expired: "destructive",
-  missing: "destructive",
+/*
+ * Certificate state as paint marks: form carries the state, colour confirms it
+ * (readable in greyscale and for colour-blind users).
+ *   valid      solid steel-green bar
+ *   expiring60 dashed marking-yellow frame
+ *   expiring30 solid marking-yellow plate
+ *   expired    struck through, red oxide
+ *   missing    hollow frame, red oxide
+ */
+const CERT_CLASS: Record<CertificateStatus, string> = {
+  valid: "border-transparent bg-steel-green/15 text-foreground",
+  expiring60: "border-dashed border-marking-foreground/70 bg-marking/25 text-marking-foreground dark:text-marking",
+  expiring30: "border-transparent bg-marking text-marking-foreground",
+  expired: "border-transparent bg-destructive/12 text-destructive line-through decoration-2",
+  missing: "border-destructive/80 bg-transparent text-destructive",
 }
-const CERT_DOT: Record<CertificateStatus, string> = {
-  valid: "bg-emerald-500",
-  expiring60: "bg-amber-400",
-  expiring30: "bg-orange-500",
-  expired: "bg-red-600",
-  missing: "bg-red-600",
+const CERT_MARK: Record<CertificateStatus, string> = {
+  valid: "h-2.5 w-[3px] bg-steel-green",
+  expiring60: "h-2.5 w-[3px] border-l-[3px] border-dotted border-marking-foreground/80",
+  expiring30: "h-2.5 w-[3px] bg-marking-foreground",
+  expired: "h-[3px] w-2.5 bg-destructive",
+  missing: "size-2 border-[1.5px] border-destructive",
 }
 
 export function CertBadge({ status }: { status: CertificateStatus }) {
   const { t } = useT()
   return (
-    <Badge variant={CERT_VARIANT[status]}>
-      <span className={`size-1.5 rounded-full ${CERT_DOT[status]}`} aria-hidden />
+    <Badge variant="outline" className={CERT_CLASS[status]}>
+      <span className={`shrink-0 ${CERT_MARK[status]}`} aria-hidden />
       {t(`staffing.cert.${status}` as MessageKey)}
     </Badge>
   )
@@ -129,7 +138,7 @@ export function NativeSelect({ value, onChange, children, className, id, require
       required={required}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`h-9 rounded-md border border-input bg-transparent px-2.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30 ${className ?? ""}`}
+      className={`h-9 rounded-md border border-input bg-card px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30 ${className ?? ""}`}
       {...rest}
     >
       {children}

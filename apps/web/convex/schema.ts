@@ -3,6 +3,11 @@ import { documentsTables } from "@digimuza/documents"
 import { mailTables } from "./model/mailTables"
 import { n8nTables } from "./model/n8nTables"
 import { staffingTables } from "@digimuza/staffing/tables"
+import { teamsTables } from "@digimuza/staffing"
+import { logisticsTables } from "@digimuza/staffing/logistics/tables"
+import { timesheetsTables } from "@digimuza/staffing/timesheets/tables"
+import { complianceTables } from "@digimuza/staffing"
+import { invoicingTables } from "@digimuza/staffing"
 import { aiTables } from "@digimuza/system-core/ai"
 import { automationsTables } from "@digimuza/system-core/automations"
 import { systemTables } from "@digimuza/system-core/convex"
@@ -39,4 +44,9 @@ export default defineSchema({
   // Staffing base (packages/staffing): trades, certificate types, workers, certificates, clients, projects, assignments (convex/staffing.ts).
   ...staffingTables,
   // Staffing areas: one line each below (...timesheetsTables, ...).
+  ...teamsTables,
+  ...logisticsTables,
+  ...timesheetsTables,
+  ...complianceTables,
+  ...invoicingTables,
 })

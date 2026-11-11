@@ -28,3 +28,12 @@ export { staffingTools, staffingListWorkersTool, staffingGetWorkerTool, staffing
 // Each area lives in src/<area>/ and re-exports its manifest, tables, functions
 // and tools here, e.g.:
 //   export * from "./timesheets"
+export * from "./teams"
+export * from "./logistics"
+export * from "./timesheets"
+export * from "./compliance"
+export * from "./invoicing"
+// Both timesheets and invoicing define these helpers (quarter-hour vs cent
+// rounding). The root exposes the timesheets ones; areas import their own
+// from "./pure" relatively.
+export { isWeekend, roundHours } from "./timesheets/pure"

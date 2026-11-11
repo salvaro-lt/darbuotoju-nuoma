@@ -42,7 +42,12 @@ import { McpPermissions } from "@digimuza/system-core/mcp"
 import { CrmPermissions } from "@digimuza/crm/manifest"
 import { DocumentsPermissions } from "@digimuza/documents/manifest"
 import { StaffingPermissions } from "@digimuza/staffing/manifest"
+import { TimesheetsNavItem } from "./timesheets/_components/timesheets-ui"
 import { useStaffingEnabled } from "./staffing/_components/staffing-ui"
+import { TeamsNavItem } from "./teams/_components/teams-nav"
+import { LogisticsNavItem } from "./logistics/_components/logistics-nav"
+import { ComplianceNavItem } from "./compliance/_components/compliance-ui"
+import { InvoicingNavGate } from "./invoicing/_components/invoicing-ui"
 import { useDocumentsEnabled, useLabels, useSigningVisible } from "./documents/_components/use-documents"
 import { ObjectIcon } from "./crm/_components/icons"
 import { useCrmSchema } from "./crm/_components/use-crm"
@@ -52,6 +57,7 @@ import { AI_CHAT_PERMISSION, AI_MODULE_ID } from "@/lib/ai/api"
 import { NotificationsNavItem } from "@/components/notifications/notification-bell"
 import { SearchNavButton } from "@/components/search/command-palette"
 import { LinkPending } from "@/components/app/link-pending"
+import { FrameRulerVertical } from "@/components/app/frame-ruler"
 
 /** Live: links appear and disappear as roles, modules and flags change. */
 export function AppSidebar() {
@@ -96,7 +102,7 @@ export function AppSidebar() {
             <SidebarMenuButton size="lg" asChild>
               <Link href="/app">
                 <BrandMark size="sm" />
-                <span className="truncate font-semibold">{brand.name}</span>
+                <span className="label-marking truncate text-[15px] tracking-[0.04em]">{brand.name}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -107,7 +113,8 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="relative pr-4 group-data-[collapsible=icon]:pr-0">
+        <FrameRulerVertical className="group-data-[collapsible=icon]:hidden" />
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -130,6 +137,11 @@ export function AppSidebar() {
                 {canProjects && <NavItem href="/app/staffing/projects" icon={<FolderKanban />} label={t("staffing.nav.projects")} />}
                 {canClients && <NavItem href="/app/staffing/clients" icon={<Building2 />} label={t("staffing.nav.clients")} />}
                 {/* staffing areas: one NavItem each below */}
+                <TeamsNavItem />
+                <LogisticsNavItem />
+                <TimesheetsNavItem render={(p) => <NavItem {...p} />} />
+                <ComplianceNavItem Item={NavItem} />
+                <InvoicingNavGate><NavItem href="/app/invoicing" icon={<Receipt />} label={t("invoicing.nav")} /></InvoicingNavGate>
                 {canCatalog && <NavItem href="/app/staffing/catalog" icon={<Library />} label={t("staffing.nav.catalog")} />}
               </SidebarMenu>
             </SidebarGroupContent>

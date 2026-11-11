@@ -53,7 +53,7 @@ export function SignOutButton({ primary, children }: { primary?: boolean; childr
 
 export function InviteSymbol() {
   return (
-    <span className="inline-grid size-11 place-items-center rounded-xl bg-muted text-foreground" aria-hidden="true">
+    <span className="inline-grid size-11 place-items-center rounded-[3px] bg-muted text-foreground" aria-hidden="true">
       <Mail className="size-5" />
     </span>
   )
