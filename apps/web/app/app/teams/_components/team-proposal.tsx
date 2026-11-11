@@ -20,6 +20,7 @@ import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { useT } from "@/lib/i18n/client"
 import type { MessageKey } from "@/lib/i18n/messages"
+import { TeamRulesCard } from "../../planning/_components/team-rules-card"
 import { NativeSelect, Period, projectHref, workerHref } from "../../staffing/_components/staffing-ui"
 import { useTeamsEnabled } from "./teams-nav"
 import { RequestStatusBadge, TeamCount, WarningBadge } from "./teams-ui"
@@ -251,6 +252,7 @@ function ProposalView({ data }: { data: Data }) {
               )}
             </CardContent>
           </Card>
+          <TeamRulesCard rules={p.rules} warnings={p.ruleWarnings} text={p.ruleText} swaps={p.ruleSwaps} names={p.workerNames} />
           {r.status !== "cancelled" && <DraftCard data={data} draft={draft} />}
         </div>
       </div>
@@ -268,7 +270,7 @@ function CandidateOptions({ list }: { list: RankedCandidate[] }) {
           {c.name} · {t(`staffing.level.${c.level}` as MessageKey)}
           {c.canDrive ? " · B" : ""}
           {c.previousClientAssignments ? ` · ★${c.previousClientAssignments}` : ""} · {c.score}
-          {c.eligible ? "" : ` (${t("teams.detail.unfit")})`}
+          {c.clientFeedback === "unsuitable" ? ` (${t("planning.feedback.unsuitable")})` : c.eligible ? "" : ` (${t("teams.detail.unfit")})`}
         </option>
       ))}
     </>
@@ -300,8 +302,14 @@ function PickRow(props: {
           </Link>
           {cand && <span className="text-xs text-muted-foreground">{t(`staffing.level.${cand.level}` as MessageKey)}</span>}
           {cand && cand.previousClientAssignments > 0 && (
-            <Badge variant="secondary" className="font-normal">
+            <Badge variant="secondary" className="font-normal" title={cand.lastClientWork ? `${t("teams.detail.lastHere")} ${cand.lastClientWork}` : undefined}>
               ★ {t("teams.detail.returning")} ×{cand.previousClientAssignments}
+              {cand.lastClientWork && <span className="tabular-nums"> · {cand.lastClientWork.slice(5)}</span>}
+            </Badge>
+          )}
+          {cand?.clientFeedback === "suitable" && (
+            <Badge variant="outline" className="border-transparent bg-steel-green/15 font-normal text-foreground">
+              {t("planning.feedback.suitable")}
             </Badge>
           )}
           {cand && cand.languageMatch.length > 0 && (

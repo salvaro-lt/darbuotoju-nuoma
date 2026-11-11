@@ -134,6 +134,7 @@ describe("AI assistant", () => {
       ["staffing.list_projects", false],
       ["staffing-teams.propose_team", false],
       ["staffing-compliance.project_readiness", false],
+      ["staffing-planning.capacity", false],
       ["automations.list", false],
       ["automations.get", false],
       ["automations.list_targets", false],
