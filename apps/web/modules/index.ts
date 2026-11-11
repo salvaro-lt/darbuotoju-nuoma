@@ -10,6 +10,7 @@ import { automations, AutomationsPermissions } from "@digimuza/system-core/autom
 import { finance, FinancePermissions } from "@digimuza/system-core/finance"
 import { ingest, IngestPermissions } from "@digimuza/system-core/ingest"
 import { staffing, StaffingPermissions } from "@digimuza/staffing/manifest"
+import { staffingInvoicing } from "@digimuza/staffing/invoicing/manifest"
 import { mcp, McpPermissions } from "@digimuza/system-core/mcp"
 
 // `mcp` (ChatGPT / Claude over MCP) needs `ai`. `automations`: email / form → AI → insert.
@@ -26,5 +27,6 @@ export const appModules = [
   documents,
   staffing,
   // staffing areas: one line each below (teams, timesheets, invoicing, logistics, compliance)
+  staffingInvoicing,
 ]
 export { staffing, StaffingPermissions, ai, AiPermissions, automations, AutomationsPermissions, crm, CrmPermissions, documents, DocumentsPermissions, finance, FinancePermissions, ingest, IngestPermissions, mcp, McpPermissions }

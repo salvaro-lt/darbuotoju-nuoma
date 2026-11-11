@@ -1,6 +1,7 @@
 import { crmTables } from "@digimuza/crm"
 import { documentsTables } from "@digimuza/documents"
 import { staffingTables } from "@digimuza/staffing/tables"
+import { invoicingTables } from "@digimuza/staffing"
 import { aiTables } from "@digimuza/system-core/ai"
 import { automationsTables } from "@digimuza/system-core/automations"
 import { systemTables } from "@digimuza/system-core/convex"
@@ -33,4 +34,5 @@ export default defineSchema({
   // Staffing base (packages/staffing): trades, certificate types, workers, certificates, clients, projects, assignments (convex/staffing.ts).
   ...staffingTables,
   // Staffing areas: one line each below (...timesheetsTables, ...).
+  ...invoicingTables,
 })
