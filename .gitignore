@@ -14,3 +14,7 @@ coverage
 
 # Local agent tooling
 .serena/
+
+# n8n deploy state (credential ids, not secrets)
+n8n/.credential-ids.json
+.claude/worktrees/

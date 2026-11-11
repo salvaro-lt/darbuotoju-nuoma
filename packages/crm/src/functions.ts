@@ -578,6 +578,43 @@ export function defineCrm(system: ConvexSystem, options: CrmOptions = {}) {
       handler: async (ctx) => install(dbOf(ctx)),
     }),
 
+    /**
+     * Seed hook for demos and fixtures (`convex run`, never public): creates
+     * records in order. A string value `"@<ref>"` is replaced by the id of the
+     * earlier record with that `ref` (for relation fields). A record whose
+     * label already exists in its object is skipped (idempotent re-runs).
+     */
+    _seedRecords: internalMutationGeneric({
+      args: { records: v.array(v.object({ ref: v.optional(v.string()), objectKey: v.string(), values: v.record(v.string(), v.any()) })) },
+      handler: async (ctx, a): Promise<{ created: number; skipped: number }> => {
+        const db = dbOf(ctx)
+        const op = "seed"
+        const refs = new Map<string, CrmRecordId>()
+        let created = 0
+        let skipped = 0
+        for (const r of a.records) {
+          const object = await activeObjectByKey(db, r.objectKey, op)
+          const fields = await fieldsOf(db, object._id)
+          const raw = Object.fromEntries(
+            Object.entries(r.values).map(([k, val]) => [k, typeof val === "string" && val.startsWith("@") ? (refs.get(val.slice(1)) ?? null) : val]),
+          )
+          const { values } = await buildValues(db, op, fields, {}, raw, true)
+          const d = derived(object, fields, values)
+          const existing = (await db.query("crmRecords").withIndex("by_object", (q) => q.eq("objectId", object._id).eq("archived", false)).collect()).find((x) => x.label === d.label)
+          if (existing) {
+            if (r.ref) refs.set(r.ref, existing._id as CrmRecordId)
+            skipped++
+            continue
+          }
+          const recordId = await db.insert("crmRecords", { objectId: object._id, values, ...d, archived: false, createdBy: "system:seed", updatedBy: "system:seed", updatedAt: Date.now() })
+          await syncLinks(db, { _id: recordId, objectId: object._id }, fields, values, Object.keys(values))
+          if (r.ref) refs.set(r.ref, recordId)
+          created++
+        }
+        return { created, skipped }
+      },
+    }),
+
     createObject: mutationGeneric({
       args: {
         ...actorArgs,
