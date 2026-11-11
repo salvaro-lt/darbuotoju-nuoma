@@ -10,9 +10,10 @@ import { addDays, todayIso } from "../pure"
 import type { WorkerDoc } from "../shared"
 import type { TimesheetsDataModel } from "./operations"
 import { isoWeek, isWeekend, weekday, weekStartOf, type ClientRowInput } from "./pure"
+import { seedTimesheetsSources } from "./seed-sources"
 import type { TimesheetsTableName } from "./tables"
 
-const TABLES: TimesheetsTableName[] = ["staffing_timesheets_entries", "staffing_timesheets_weeks", "staffing_timesheets_settings", "staffing_timesheets_resolutions", "staffing_timesheets_clientSheets", "staffing_timesheets_reminders"]
+const TABLES: TimesheetsTableName[] = ["staffing_timesheets_entries", "staffing_timesheets_weeks", "staffing_timesheets_settings", "staffing_timesheets_resolutions", "staffing_timesheets_disputes", "staffing_timesheets_intake", "staffing_timesheets_clientSheets", "staffing_timesheets_reminders", "staffing_timesheets_workerEntries", "staffing_timesheets_workerLinks", "staffing_timesheets_inboxLinks"]
 
 const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7)
 
@@ -31,7 +32,7 @@ function hoursFor(project: string, w: WorkerDoc, date: string): { regular: numbe
 }
 
 /** How the client writes a worker's name. */
-function clientName(w: WorkerDoc): string {
+export function clientName(w: WorkerDoc): string {
   if (w.lastName === "Zrazkovych") return "Zrazkovich Sergii"
   const style = hash(w.firstName) % 3
   if (style === 0) return `${w.lastName.toUpperCase()} ${w.firstName}`
@@ -43,15 +44,11 @@ export function defineTimesheetsSeed() {
   return {
     _seedDemo: internalMutationGeneric({
       args: { reset: v.optional(v.boolean()) },
-      handler: async (ctx, a): Promise<{ seeded: boolean; entries: number; approvedWeeks: number; clientSheets: number }> => {
+      handler: async (ctx, a): Promise<{ seeded: boolean; entries: number; approvedWeeks: number; clientSheets: number; sources: Awaited<ReturnType<typeof seedTimesheetsSources>> }> => {
         const env = process.env.APP_ENV
         if (!env || env === "production") throw new Error(`timesheets:_seedDemo refuses to run with APP_ENV=${env ?? "(unset)"}`)
         const db = ctx.db as GenericDatabaseWriter<TimesheetsDataModel>
-        if (a.reset) {
-          for (const t of TABLES) for (const row of await db.query(t).collect()) await db.delete(t, row._id as never)
-        } else if (await db.query("staffing_timesheets_entries").first()) {
-          return { seeded: false, entries: 0, approvedWeeks: 0, clientSheets: 0 }
-        }
+        if (a.reset) for (const t of TABLES) for (const row of await db.query(t).collect()) await db.delete(t, row._id as never)
         const byCode = async (code: string) =>
           db
             .query("staffing_projects")
@@ -66,6 +63,11 @@ export function defineTimesheetsSeed() {
         const firstMonday = addDays(thisMonday, -28)
         const yesterday = addDays(today, -1)
         const now = Date.now()
+        // Base data present: only the DIG-111 part (own idempotency) may still be missing.
+        if (!a.reset && (await db.query("staffing_timesheets_entries").first())) {
+          const sources = await seedTimesheetsSources(db, { nds, bst, today, thisMonday, clientName, now })
+          return { seeded: sources.links > 0, entries: 0, approvedWeeks: 0, clientSheets: 0, sources }
+        }
         let entries = 0
         let approvedWeeks = 0
         let clientSheets = 0
@@ -170,7 +172,8 @@ export function defineTimesheetsSeed() {
         const w4 = addDays(thisMonday, -28)
         await sheet(bst._id, w4, "xlsx", `BST_Stundenzettel_KW${isoWeek(w4)}.xlsx`, await clientRows("BST", bst._id, w4), 3)
 
-        return { seeded: true, entries, approvedWeeks, clientSheets }
+        const sources = await seedTimesheetsSources(db, { nds, bst, today, thisMonday, clientName, now })
+        return { seeded: true, entries, approvedWeeks, clientSheets, sources }
       },
     }),
   }

@@ -14,6 +14,8 @@ import {
   isWeekend,
   reconcile,
   roundHours,
+  rowsRange,
+  type RawClientRow,
   splitHours,
   timesheetDue,
   weekDays,
@@ -27,7 +29,11 @@ import {
   type TimesheetCadence,
 } from "./pure"
 import { defineTimesheetsSeed } from "./seed"
-import { clientRowValidator, clientSheetSourceValidator, resolutionActionValidator, timesheetCadenceValidator } from "./tables"
+import { defineTimesheetsSources } from "./sources"
+import { clientRowValidator, clientSheetSourceValidator, rawClientRowValidator, resolutionActionValidator, timesheetCadenceValidator } from "./tables"
+
+/** Raw client lines kept per sheet (13-minute scan rows add up fast; a document stays well under 1 MB). */
+const MAX_RAW_ROWS = 6000
 
 export interface TimesheetsOptions {
   /** The app's Convex file that re-exports these functions (for scheduled calls). Default `timesheets`. */
@@ -99,10 +105,15 @@ export interface ClientSheetView {
   receivedAt: number
   mismatches: number
   resolved: number
+  /** Lines as the client wrote them (more than `rowCount` for scan-per-part exports). */
+  rawRowCount: number
+  /** `pending`: came in by email, nobody checked it yet. */
+  review: "pending" | "confirmed" | null
+  email: { from: string; subject: string; receivedAt: number } | null
 }
 
 export interface ReconciliationView {
-  sheet: ClientSheetView & { rows: { name: string; date: string; hours: number }[] }
+  sheet: ClientSheetView & { rows: { name: string; date: string; hours: number }[]; rawRows: RawClientRow[] }
   project: { id: string; code: string; name: string; clientName: string }
   workers: { id: string; name: string }[]
   reconciliation: Reconciliation
@@ -223,6 +234,9 @@ export function defineTimesheets(system: ConvexSystem, options: TimesheetsOption
       receivedAt: sheet.receivedAt,
       mismatches: open.size,
       resolved: resolutions.filter((r) => open.has(r.key)).length,
+      rawRowCount: sheet.rawRows?.length ?? 0,
+      review: sheet.review ?? null,
+      email: sheet.email ?? null,
     }
   }
 
@@ -319,6 +333,7 @@ export function defineTimesheets(system: ConvexSystem, options: TimesheetsOption
 
   return {
     ...defineTimesheetsSeed(),
+    ...defineTimesheetsSources(system, { ref }),
 
     // ---------------------------------------------------------------- reads
 
@@ -429,7 +444,7 @@ export function defineTimesheets(system: ConvexSystem, options: TimesheetsOption
           .collect()
         const locked = await approvedWeeks(ctx, sheet.projectId, sheet.periodFrom, sheet.periodTo)
         return {
-          sheet: { ...(await sheetView(ctx, sheet)), rows: sheet.rows },
+          sheet: { ...(await sheetView(ctx, sheet)), rows: sheet.rows, rawRows: sheet.rawRows ?? [] },
           project: await projectHead(ctx, p),
           workers: workers.map((w) => ({ id: w._id, name: `${w.lastName} ${w.firstName}` })).sort((x, y) => x.name.localeCompare(y.name)),
           reconciliation,
@@ -915,39 +930,61 @@ export function defineTimesheets(system: ConvexSystem, options: TimesheetsOption
           const w = await db.get("staffing_workers", id)
           if (w) names.push(fullName(w))
         }
-        return { fileStorageId: s.fileStorageId ?? null, pageImageIds: s.pageImageIds ?? [], text: s.text ?? null, periodFrom: s.periodFrom, periodTo: s.periodTo, workerNames: names }
+        return { fileStorageId: s.fileStorageId ?? null, fileName: s.fileName ?? null, pageImageIds: s.pageImageIds ?? [], text: s.text ?? null, periodFrom: s.periodFrom, periodTo: s.periodTo, workerNames: names }
       },
     }),
 
     _parseWithAi: internalActionGeneric({
       args: { sheetId: v.id("staffing_timesheets_clientSheets") },
       handler: async (ctx, a): Promise<void> => {
-        const c = (await ctx.runQuery(ref("_aiContext"), { sheetId: a.sheetId } as never)) as { fileStorageId: string | null; pageImageIds: string[]; text: string | null; periodFrom: string; periodTo: string; workerNames: string[] } | null
+        const c = (await ctx.runQuery(ref("_aiContext"), { sheetId: a.sheetId } as never)) as { fileStorageId: string | null; fileName: string | null; pageImageIds: string[]; text: string | null; periodFrom: string; periodTo: string; workerNames: string[] } | null
         if (!c) return
         const images: string[] = []
+        let pdf: { name: string; dataUrl: string } | undefined
         const ids = c.pageImageIds.length ? c.pageImageIds : c.text ? [] : c.fileStorageId ? [c.fileStorageId] : []
         for (const id of ids) {
           const blob = await ctx.storage.get(id as never)
-          if (!blob || blob.size > 8 * 1024 * 1024 || !(blob.type || "image/").startsWith("image/")) continue
+          if (!blob || blob.size > 8 * 1024 * 1024) continue
+          // A PDF without rendered pages (email intake): the model reads the file itself.
+          if (blob.type === "application/pdf" && !c.pageImageIds.length) {
+            pdf = { name: c.fileName ?? "timesheet.pdf", dataUrl: `data:application/pdf;base64,${toBase64(new Uint8Array(await blob.arrayBuffer()))}` }
+            continue
+          }
+          if (!(blob.type || "image/").startsWith("image/")) continue
           images.push(`data:${blob.type || "image/jpeg"};base64,${toBase64(new Uint8Array(await blob.arrayBuffer()))}`)
         }
-        if (!images.length && !c.text) {
+        if (!images.length && !c.text && !pdf) {
           await ctx.runMutation(ref("_applyAiRows"), { sheetId: a.sheetId, status: "failed", error: "nothing_to_read" } as never)
           return
         }
-        const res = await readTimesheetWithAi({ images, text: c.text ?? undefined, periodFrom: c.periodFrom, periodTo: c.periodTo, workerNames: c.workerNames })
-        if (res.ok) await ctx.runMutation(ref("_applyAiRows"), { sheetId: a.sheetId, status: "ready", rows: res.rows } as never)
+        const res = await readTimesheetWithAi({ images, text: c.text ?? undefined, pdf, periodFrom: c.periodFrom, periodTo: c.periodTo, workerNames: c.workerNames })
+        if (res.ok) await ctx.runMutation(ref("_applyAiRows"), { sheetId: a.sheetId, status: "ready", rows: res.rows, rawRows: res.raw.slice(0, MAX_RAW_ROWS) } as never)
         else await ctx.runMutation(ref("_applyAiRows"), { sheetId: a.sheetId, status: res.code === "AI_NOT_CONFIGURED" ? "ai_not_configured" : "failed", error: res.message } as never)
       },
     }),
 
     _applyAiRows: internalMutationGeneric({
-      args: { sheetId: v.id("staffing_timesheets_clientSheets"), status: v.union(v.literal("ready"), v.literal("ai_not_configured"), v.literal("failed")), rows: v.optional(v.array(clientRowValidator)), error: v.optional(v.string()) },
+      args: {
+        sheetId: v.id("staffing_timesheets_clientSheets"),
+        status: v.union(v.literal("ready"), v.literal("ai_not_configured"), v.literal("failed")),
+        rows: v.optional(v.array(clientRowValidator)),
+        rawRows: v.optional(v.array(rawClientRowValidator)),
+        error: v.optional(v.string()),
+      },
       handler: async (ctx, a): Promise<void> => {
         const db = tsWriter(ctx)
         const s = await db.get("staffing_timesheets_clientSheets", a.sheetId)
         if (!s) return
-        await db.patch("staffing_timesheets_clientSheets", s._id, { status: a.status, rows: [...s.rows, ...(a.rows ?? [])], error: a.error })
+        const rows = [...s.rows, ...(a.rows ?? [])]
+        // The period follows what the client actually wrote (email intake only guesses it).
+        const range = s.email ? rowsRange(rows) : null
+        await db.patch("staffing_timesheets_clientSheets", s._id, {
+          status: a.status,
+          rows,
+          error: a.error,
+          ...(a.rawRows?.length ? { rawRows: [...(s.rawRows ?? []), ...a.rawRows].slice(0, MAX_RAW_ROWS) } : {}),
+          ...(range ? { periodFrom: range.from < s.periodFrom ? range.from : s.periodFrom, periodTo: range.to > s.periodTo ? range.to : s.periodTo } : {}),
+        })
       },
     }),
   }

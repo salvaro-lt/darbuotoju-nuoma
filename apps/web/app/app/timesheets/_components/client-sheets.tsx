@@ -111,6 +111,12 @@ export function ClientSheets({ projectId }: { projectId: string }) {
                   <TableCell className="text-right tabular-nums">{hours(s.totalHours, true)}</TableCell>
                   <TableCell>
                     <SheetStatusBadge s={s} />
+                    {s.review === "pending" && (
+                      <Badge variant="outline" className="ml-1 border-marking-foreground/40 bg-marking/20 text-marking-foreground">
+                        {t("timesheets.review.pending")}
+                      </Badge>
+                    )}
+                    {s.rawRowCount > 0 && <div className="mt-0.5 text-xs text-muted-foreground">{fmt(t("timesheets.raw.count"), { raw: s.rawRowCount, rows: s.rowCount })}</div>}
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{d.stamp(s.receivedAt)}</TableCell>
                   <TableCell className="text-right">

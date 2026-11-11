@@ -114,6 +114,26 @@ language, housing hint) and `planning/pure` (`weeksFrom`, `weekCell`, `workerSta
 `client_unsuitable`, the proposal keeps the client's rules, "Ko trūksta" lists subcontractor capacity. AI tool
 `staffing-planning.capacity`. Demo: `npx convex run planning:_seedDemo` (after `staffing:_seedDemo` and
 `teams:_seedDemo`).
+## Timesheets: worker links, three sources, disputes, email intake (DIG-111)
+
+Part of `staffing-timesheets` (`src/timesheets/sources.ts`, `disputes.ts`, `intake.ts`, `reads.ts`, pure logic in `pure.ts`).
+
+- **Worker link** `/h/<token>` (public, like `/sign/<token>`): `workerPortal`, `saveMyHours`, `flagMyDay` ("nesutinku",
+  notifies `client:manage`), `clearMyFlag` take only the token; malformed / unknown / revoked → `not_found`, module off →
+  `unavailable`. Edits: today back 31 days, inside a recordable assignment. Own hours live in
+  `staffing_timesheets_workerEntries` (source `worker`), never in the coordinator's entries. Links:
+  `listWorkerLinks`, `createWorkerLinks`, `regenerateWorkerLink`, `sendWorkerLink` (n8n `dr-nuoma-pranesimas`);
+  printable QR list at `/print/timesheets/links/<projectId>`.
+- **Three sources** `threeWayWeek`: worker / ours / client per worker per day (`threeWay`, `compareSources`); client
+  hours from every sheet covering the day (`clientDays`, latest sheet wins, a covered day without the worker = 0).
+- **Disputes** (`staffing_timesheets_disputes`): one worker × period, hours, EUR at the project sell rate, status
+  `open | waiting_client | resolved_accepted | resolved_compensated | rejected`, timeline. `createDispute` without
+  `hours` computes claimed − client; `client_recheck` takes hours by hand. "Pakibę" = open + waiting_client.
+- **Email intake**: `timesheetsIngestConsumer()` (listed in `convex/automationsConfig.ts`); link a Gavimas inbox to
+  "Tabeliai". A received PDF is matched (`matchIntake`: project code, then sender domain), downloaded from Resend,
+  filed as a client sheet with `review: "pending"` and read by the AI (the PDF itself, raw lines →
+  `aggregateRawRows`). Also by hand: `listReceivedPdfEmails` + `importReceivedEmail`; unmatched → `assignIntake`.
+  No Resend / AI: the sheet is still filed with the reason.
 
 ## How to add an area
 

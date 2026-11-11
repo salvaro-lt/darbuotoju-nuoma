@@ -1,13 +1,13 @@
 "use client"
 import type { ReconcileLine, ReconciliationView, ResolutionAction } from "@digimuza/staffing"
 import { StaffingTimesheetsPermissions as P } from "@digimuza/staffing/timesheets/manifest"
-import { weekStartOf } from "@digimuza/staffing/timesheets/pure"
+import { weekStartOf, type RawClientRow } from "@digimuza/staffing/timesheets/pure"
 import { Can, useCan } from "@digimuza/system-core/react"
 import { useMutation, useQuery } from "convex/react"
-import { AlertTriangle, ArrowLeft, Check, ExternalLink, Loader2, MessageSquare, Plus, RotateCcw, Trash2, Undo2 } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Check, ExternalLink, Gavel, ListTree, Loader2, MailCheck, MessageSquare, Plus, RotateCcw, Trash2, Undo2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState, type FormEvent } from "react"
+import { Fragment, useMemo, useState, type FormEvent } from "react"
 import { useAction } from "@/components/app/use-action"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -25,7 +25,7 @@ import { useT } from "@/lib/i18n/client"
 import type { MessageKey } from "@/lib/i18n/messages"
 import { ConfirmDelete, NativeSelect } from "../../staffing/_components/staffing-ui"
 import { SheetStatusBadge } from "./client-sheets"
-import { fmt, parseHoursInput, projectTimesheetHref, TimesheetsDisabled, useDateFormat, useHours, useTimesheetsEnabled } from "./timesheets-ui"
+import { disputeHref, fmt, parseHoursInput, projectTimesheetHref, TimesheetsDisabled, useDateFormat, useHours, useTimesheetsEnabled } from "./timesheets-ui"
 
 const KIND_STYLE: Record<ReconcileLine["kind"], string> = {
   ok: "bg-steel-green/15 text-steel-green dark:bg-steel-green/15 dark:text-steel-green",
@@ -42,8 +42,17 @@ export function Reconciliation({ sheetId }: { sheetId: string }) {
   const view = useQuery(api.timesheets.getReconciliation, enabled ? { sheetId: id } : "skip")
   const fileUrl = useQuery(api.timesheets.getClientSheetFileUrl, enabled ? { sheetId: id } : "skip")
   const [onlyMismatches, setOnlyMismatches] = useState(true)
+  const [expanded, setExpanded] = useState<string | null>(null)
   const hours = useHours()
   const d = useDateFormat()
+  const rawBy = useMemo(() => {
+    const m = new Map<string, RawClientRow[]>()
+    for (const r of view?.sheet.rawRows ?? []) {
+      const k = `${r.name.trim().replace(/\s+/g, " ")}|${r.date}`
+      m.set(k, [...(m.get(k) ?? []), r])
+    }
+    return m
+  }, [view?.sheet.rawRows])
   if (!enabled) return <TimesheetsDisabled />
   if (view === null) return <p className="text-sm text-muted-foreground">{t("staffing.common.notFound")}</p>
   if (!view) return <Skeleton className="h-96 w-full rounded-xl" />
@@ -78,6 +87,7 @@ export function Reconciliation({ sheetId }: { sheetId: string }) {
         <DeleteSheet sheetId={id} projectId={view.project.id} />
       </header>
 
+      <ReviewBanner view={view} />
       <SheetState view={view} />
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -113,8 +123,11 @@ export function Reconciliation({ sheetId }: { sheetId: string }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {lines.map((l) => (
-                  <TableRow key={l.key}>
+                {lines.map((l) => {
+                  const raw = l.clientName ? (rawBy.get(`${l.clientName}|${l.date}`) ?? []) : []
+                  return (
+                  <Fragment key={l.key}>
+                  <TableRow>
                     <TableCell className="px-4">
                       <div className="font-medium">{l.workerId ? workerName.get(l.workerId) : l.clientName}</div>
                       {l.clientName && l.workerId && <div className="text-xs text-muted-foreground">„{l.clientName}“</div>}
@@ -123,7 +136,15 @@ export function Reconciliation({ sheetId }: { sheetId: string }) {
                       <span className="capitalize text-muted-foreground">{d.weekday(l.date)}</span> {d.full(l.date)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{l.ours === null ? "—" : hours(l.ours, true)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{l.theirs === null ? "—" : hours(l.theirs, true)}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {l.theirs === null ? "—" : hours(l.theirs, true)}
+                      {raw.length > 1 && (
+                        <button type="button" className="ml-1.5 inline-flex items-center gap-0.5 rounded px-1 text-xs text-primary hover:bg-primary/10" aria-expanded={expanded === l.key} onClick={() => setExpanded(expanded === l.key ? null : l.key)}>
+                          <ListTree className="size-3" />
+                          {fmt(t("timesheets.raw.lines"), { n: raw.length })}
+                        </button>
+                      )}
+                    </TableCell>
                     <TableCell className={`text-right font-medium tabular-nums ${l.diff > 0 ? "text-destructive" : l.diff < 0 ? "text-foreground dark:text-foreground" : "text-muted-foreground"}`}>
                       {l.diff ? `${l.diff > 0 ? "+" : ""}${hours(l.diff)}` : "0"}
                     </TableCell>
@@ -132,7 +153,16 @@ export function Reconciliation({ sheetId }: { sheetId: string }) {
                     </TableCell>
                     <TableCell>{l.kind !== "ok" && <LineActions view={view} line={l} />}</TableCell>
                   </TableRow>
-                ))}
+                  {expanded === l.key && (
+                    <TableRow className="bg-muted/40 hover:bg-muted/40">
+                      <TableCell colSpan={7} className="px-4 py-2">
+                        <RawLines rows={raw} />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  </Fragment>
+                  )
+                })}
               </TableBody>
             </Table>
           </div>
@@ -142,6 +172,81 @@ export function Reconciliation({ sheetId }: { sheetId: string }) {
       {rec.names.length > 0 && <NameMatching view={view} />}
       <ClientRows view={view} />
     </div>
+  )
+}
+
+function RawLines({ rows }: { rows: RawClientRow[] }) {
+  const { t } = useT()
+  const hours = useHours()
+  const total = rows.reduce((s, r) => s + r.minutes, 0)
+  return (
+    <div className="space-y-1.5">
+      <div className="text-xs font-medium text-muted-foreground">
+        {t("timesheets.raw.title")} · {fmt(t("timesheets.raw.minutes"), { n: total })} = {hours(Math.round((total / 60) * 100) / 100, true)} h
+      </div>
+      <ol className="grid gap-x-4 gap-y-0.5 text-xs tabular-nums sm:grid-cols-2 lg:grid-cols-3">
+        {rows.map((r, i) => (
+          <li key={i} className="flex justify-between gap-2 border-b border-dashed py-0.5">
+            <span className="truncate text-muted-foreground">{r.ref ?? "—"}</span>
+            <span>{fmt(t("timesheets.raw.minutes"), { n: r.minutes })}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+function ReviewBanner({ view }: { view: ReconciliationView }) {
+  const { t } = useT()
+  const confirm = useMutation(api.timesheets.confirmSheetReview)
+  const { run, busy } = useAction()
+  const s = view.sheet
+  if (!s.email && !s.rawRowCount) return null
+  return (
+    <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 ${s.review === "pending" ? "border-marking-foreground/40 bg-marking/15" : "bg-card"}`}>
+      <div className="min-w-0 space-y-0.5 text-sm">
+        {s.review === "pending" && (
+          <div className="flex items-center gap-2 font-medium">
+            <MailCheck className="size-4" />
+            {t("timesheets.review.pending")}
+          </div>
+        )}
+        {s.review === "pending" && <p className="text-muted-foreground">{t("timesheets.review.pendingLead")}</p>}
+        {s.email && <p className="text-muted-foreground">{fmt(t("timesheets.review.email"), { from: s.email.from, subject: s.email.subject })}</p>}
+        {s.rawRowCount > 0 && <p className="text-muted-foreground">{fmt(t("timesheets.raw.count"), { raw: s.rawRowCount, rows: s.rowCount })}</p>}
+      </div>
+      {s.review === "pending" && (
+        <Can permission={P.clientManage}>
+          <Button size="sm" disabled={busy || s.status === "parsing"} onClick={() => run(() => confirm({ sheetId: s.id as Id<"staffing_timesheets_clientSheets"> }), { success: t("timesheets.review.confirmed") })}>
+            <Check />
+            {t("timesheets.review.confirm")}
+          </Button>
+        </Can>
+      )}
+    </div>
+  )
+}
+
+function DisputeLine({ view, line }: { view: ReconciliationView; line: ReconcileLine }) {
+  const { t } = useT()
+  const create = useMutation(api.timesheets.createDispute)
+  const { run, busy } = useAction()
+  const router = useRouter()
+  if (!line.workerId || line.diff >= 0) return null
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      className="h-7"
+      disabled={busy}
+      onClick={async () => {
+        const res = await run(() => create({ workerId: line.workerId as Id<"staffing_workers">, projectId: view.project.id as Id<"staffing_projects">, periodFrom: view.sheet.periodFrom, periodTo: view.sheet.periodTo, kind: "mismatch", sheetId: view.sheet.id as Id<"staffing_timesheets_clientSheets"> }))
+        if (res) router.push(disputeHref(res.id))
+      }}
+    >
+      <Gavel />
+      {t("timesheets.rec.dispute")}
+    </Button>
   )
 }
 
@@ -172,7 +277,13 @@ function SheetState({ view }: { view: ReconciliationView }) {
     <Alert variant="destructive">
       <AlertTriangle />
       <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
-        <span>{s.status === "ai_not_configured" ? t("timesheets.rec.aiNotConfigured") : `${t("timesheets.rec.aiFailed")}${s.error ? ` (${s.error})` : ""}`}</span>
+        <span>
+          {s.status === "ai_not_configured"
+            ? t("timesheets.rec.aiNotConfigured")
+            : s.email && !s.hasFile
+              ? fmt(t("timesheets.review.noFile"), { error: s.error ?? "?" })
+              : `${t("timesheets.rec.aiFailed")}${s.error ? ` (${s.error})` : ""}`}
+        </span>
         {s.hasFile && (
           <Can permission={P.clientManage}>
             <Button size="sm" variant="outline" disabled={busy} onClick={() => run(() => retry({ sheetId: s.id as Id<"staffing_timesheets_clientSheets"> }))}>
@@ -228,6 +339,7 @@ function LineActions({ view, line }: { view: ReconciliationView; line: Reconcile
         <MessageSquare />
         {t("timesheets.rec.addNote")}
       </Button>
+      <DisputeLine view={view} line={line} />
       {noting && <NoteDialog busy={busy} onClose={() => setNoting(false)} onSave={async (n) => (await act("note", n)) && setNoting(false)} />}
     </div>
   )

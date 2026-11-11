@@ -3,7 +3,7 @@
 // Each target's zod input validates the automation's field mapping; runs act as
 // the automation's owner, capped by the roles they chose.
 import { documentsIngestConsumer } from "@digimuza/documents/email"
-import { purchasesIngestConsumer } from "@digimuza/staffing"
+import { purchasesIngestConsumer, timesheetsIngestConsumer } from "@digimuza/staffing"
 import { automationsIngestConsumer, type AutomationsOptions, type AutomationTarget } from "@digimuza/system-core/automations"
 import { financeCreateInvoiceTool } from "@digimuza/system-core/finance"
 import { n8nIngestConsumer } from "./model/n8nConsumer"
@@ -23,4 +23,4 @@ export const automationsOptions: AutomationsOptions = {
  * documents archive, which files every email (and its attachments) by default;
  * Dokumentai → Žymos switches it off per inbox.
  */
-export const ingestConsumers = [automationsIngestConsumer(automationsOptions), n8nIngestConsumer(), documentsIngestConsumer(), purchasesIngestConsumer()]
+export const ingestConsumers = [automationsIngestConsumer(automationsOptions), n8nIngestConsumer(), documentsIngestConsumer(), purchasesIngestConsumer(), timesheetsIngestConsumer()]

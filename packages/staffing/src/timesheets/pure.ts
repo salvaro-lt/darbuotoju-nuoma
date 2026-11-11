@@ -393,3 +393,318 @@ export function periodStart(cadence: TimesheetCadence, periodEnd: string): strin
   if (cadence === "biweekly") return addDays(periodEnd, -13)
   return addDays(addMonths(addDays(periodEnd, 1), -1), 0)
 }
+
+// ---------------------------------------------------------------- many-row client exports
+
+/**
+ * One line of a client's export as written: automated factories log every
+ * scanned part, so a welder can have 20 lines of 13 minutes a day. Kept on the
+ * client sheet for audit; reconciliation uses the per worker per day sums.
+ */
+export interface RawClientRow {
+  name: string
+  date: string
+  /** Whole minutes of this line. */
+  minutes: number
+  /** What the line is about (part, cell, location), as written. */
+  ref?: string
+}
+
+/** Sums raw lines per written name per day (to the quarter hour). Zero days are dropped; sorted by name, then date. */
+export function aggregateRawRows(raw: readonly RawClientRow[]): ClientRowInput[] {
+  const sums = new Map<string, { name: string; date: string; minutes: number }>()
+  for (const r of raw) {
+    const name = r.name.trim().replace(/\s+/g, " ")
+    if (!name || !isIsoDate(r.date) || !(r.minutes > 0)) continue
+    const key = `${name}|${r.date}`
+    const prev = sums.get(key)
+    sums.set(key, { name, date: r.date, minutes: (prev?.minutes ?? 0) + r.minutes })
+  }
+  return [...sums.values()]
+    .map((s) => ({ name: s.name, date: s.date, hours: roundHours(s.minutes / 60) }))
+    .filter((r) => r.hours > 0 && r.hours <= 24)
+    .sort((a, b) => a.name.localeCompare(b.name) || a.date.localeCompare(b.date))
+}
+
+/** Minutes between `HH:MM` times (over midnight counts forward); `null` when unreadable. */
+export function minutesBetween(start: string, end: string): number | null {
+  const t = (s: string) => {
+    const m = s.trim().match(/^(\d{1,2})[:.](\d{2})$/)
+    return m && Number(m[1]) < 24 && Number(m[2]) < 60 ? Number(m[1]) * 60 + Number(m[2]) : null
+  }
+  const a = t(start)
+  const b = t(end)
+  if (a === null || b === null) return null
+  return b >= a ? b - a : b + 1440 - a
+}
+
+/**
+ * Reads the AI reader's answer as raw lines: `{"rows": [{name, date, hours |
+ * minutes | start+end, ref?}]}`. Rows without a usable duration are dropped.
+ */
+export function rawRowsFromAiAnswer(text: string): RawClientRow[] {
+  let raw: unknown
+  try {
+    raw = JSON.parse(text.trim().replace(/^```(?:json)?\s*|\s*```$/g, ""))
+  } catch {
+    return []
+  }
+  const rows = (raw as { rows?: unknown } | null)?.rows
+  if (!Array.isArray(rows)) return []
+  const out: RawClientRow[] = []
+  for (const r of rows as Record<string, unknown>[]) {
+    if (!r || typeof r !== "object") continue
+    const name = typeof r.name === "string" ? r.name.trim().slice(0, 120) : ""
+    const date = typeof r.date === "string" ? r.date : ""
+    let minutes: number | null = null
+    if (typeof r.minutes === "number" && Number.isFinite(r.minutes)) minutes = Math.round(r.minutes)
+    else if (typeof r.hours === "number" && Number.isFinite(r.hours)) minutes = Math.round(r.hours * 60)
+    else if (typeof r.start === "string" && typeof r.end === "string") minutes = minutesBetween(r.start, r.end)
+    const ref = typeof r.ref === "string" && r.ref.trim() ? r.ref.trim().slice(0, 120) : undefined
+    if (name && isIsoDate(date) && minutes !== null && minutes > 0 && minutes <= 1440) out.push({ name, date, minutes, ...(ref ? { ref } : {}) })
+  }
+  return out.slice(0, 5000)
+}
+
+// ---------------------------------------------------------------- three sources
+
+/**
+ * Hours of one worker on one day from the three sources: the worker's own
+ * entry (personal link), ours (the coordinator's grid) and the client's
+ * timesheet. `null` = the source says nothing about that day.
+ */
+export interface SourceDay {
+  worker: number | null
+  ours: number | null
+  client: number | null
+}
+
+/**
+ * `agree` (every source that speaks says the same), `worker_differs`,
+ * `client_differs`, `ours_differs` (the odd one out), `all_differ`, `single`
+ * (only one source has hours), `empty`.
+ */
+export type SourceAgreement = "agree" | "worker_differs" | "client_differs" | "ours_differs" | "all_differ" | "single" | "empty"
+
+export interface SourceComparison {
+  kind: SourceAgreement
+  /** What we stand behind: the worker's hours if entered, else ours. */
+  claimed: number | null
+  /** client − claimed when the client spoke (negative: the client pays less). */
+  diff: number
+}
+
+/**
+ * Compares the three sources of one worker-day. Our grid has no "nothing"
+ * value: when another source has hours, a missing coordinator entry counts as 0.
+ */
+export function compareSources(d: SourceDay): SourceComparison {
+  const anyHours = [d.worker, d.ours, d.client].some((x) => (x ?? 0) > 0)
+  const ours = d.ours ?? (anyHours ? 0 : null)
+  const present = [d.worker, ours, d.client].filter((x): x is number => x !== null)
+  const claimed = d.worker ?? ours
+  const diff = d.client !== null && claimed !== null ? roundHours(d.client - claimed) : 0
+  if (!anyHours) return { kind: "empty", claimed, diff: 0 }
+  if (d.worker === null && d.client === null) return { kind: "single", claimed, diff }
+  if (present.every((x) => x === present[0])) return { kind: "agree", claimed, diff }
+  if (d.worker !== null && d.client !== null) {
+    if (ours === d.client && d.worker !== ours) return { kind: "worker_differs", claimed, diff }
+    if (d.worker === ours && d.client !== ours) return { kind: "client_differs", claimed, diff }
+    if (d.worker === d.client && ours !== d.worker) return { kind: "ours_differs", claimed, diff }
+    return { kind: "all_differ", claimed, diff }
+  }
+  // Two sources speak: ours and one other.
+  if (d.client !== null) return { kind: "client_differs", claimed, diff }
+  return { kind: "worker_differs", claimed, diff }
+}
+
+export const isDisagreement = (k: SourceAgreement): boolean => k !== "agree" && k !== "single" && k !== "empty"
+
+export interface ThreeWayInput {
+  days: readonly string[]
+  people: readonly { workerId: string; name: string }[]
+  worker: readonly OwnDay[]
+  ours: readonly OwnDay[]
+  /** Client hours already mapped to workers. */
+  client: readonly OwnDay[]
+  /** Days covered by at least one client timesheet: a worker missing there counts as 0. */
+  clientCovered: readonly string[]
+  /** Days the worker marked "nesutinku". */
+  flags?: readonly { workerId: string; date: string; comment: string }[]
+}
+
+export type ThreeWayDay = SourceDay & SourceComparison & { flag: string | null }
+
+export interface ThreeWayRow {
+  workerId: string
+  name: string
+  days: Record<string, ThreeWayDay>
+  totals: { worker: number; ours: number; client: number; claimed: number; diff: number }
+  disagreements: number
+  flags: number
+}
+
+export interface ThreeWayResult {
+  rows: ThreeWayRow[]
+  totals: { worker: number; ours: number; client: number; disagreements: number; flags: number }
+}
+
+/** The coordinator's "three sources" table: per worker per day, which source disagrees. Rows with problems first. */
+export function threeWay(input: ThreeWayInput): ThreeWayResult {
+  const sum = (xs: readonly OwnDay[]) => {
+    const m = new Map<string, number>()
+    for (const x of xs) m.set(`${x.workerId}|${x.date}`, roundHours((m.get(`${x.workerId}|${x.date}`) ?? 0) + x.hours))
+    return m
+  }
+  const worker = sum(input.worker)
+  const ours = sum(input.ours)
+  const client = sum(input.client)
+  const covered = new Set(input.clientCovered)
+  const flags = new Map((input.flags ?? []).map((f) => [`${f.workerId}|${f.date}`, f.comment]))
+  const rows: ThreeWayRow[] = input.people.map((p) => {
+    const days: ThreeWayRow["days"] = {}
+    const totals = { worker: 0, ours: 0, client: 0, claimed: 0, diff: 0 }
+    let disagreements = 0
+    let flagged = 0
+    for (const date of input.days) {
+      const key = `${p.workerId}|${date}`
+      const src: SourceDay = { worker: worker.get(key) ?? null, ours: ours.get(key) ?? null, client: client.get(key) ?? (covered.has(date) ? 0 : null) }
+      const cmp = compareSources(src)
+      const flag = flags.get(key) ?? null
+      days[date] = { ...src, ...cmp, flag }
+      totals.worker += src.worker ?? 0
+      totals.ours += src.ours ?? 0
+      totals.client += src.client ?? 0
+      totals.claimed += cmp.claimed ?? 0
+      totals.diff += cmp.diff
+      if (isDisagreement(cmp.kind)) disagreements++
+      if (flag) flagged++
+    }
+    for (const k of Object.keys(totals) as (keyof typeof totals)[]) totals[k] = roundHours(totals[k])
+    return { workerId: p.workerId, name: p.name, days, totals, disagreements, flags: flagged }
+  })
+  rows.sort((a, b) => b.disagreements + b.flags - (a.disagreements + a.flags) || a.name.localeCompare(b.name))
+  return {
+    rows,
+    totals: {
+      worker: roundHours(rows.reduce((s, r) => s + r.totals.worker, 0)),
+      ours: roundHours(rows.reduce((s, r) => s + r.totals.ours, 0)),
+      client: roundHours(rows.reduce((s, r) => s + r.totals.client, 0)),
+      disagreements: rows.reduce((s, r) => s + r.disagreements, 0),
+      flags: rows.reduce((s, r) => s + r.flags, 0),
+    },
+  }
+}
+
+// ---------------------------------------------------------------- disputes
+
+export const DISPUTE_STATUSES = ["open", "waiting_client", "resolved_accepted", "resolved_compensated", "rejected"] as const
+export type DisputeStatus = (typeof DISPUTE_STATUSES)[number]
+/** Still costing money: counted in "Pakibę". */
+export const OPEN_DISPUTE_STATUSES: readonly DisputeStatus[] = ["open", "waiting_client"]
+export const isOpenDispute = (s: DisputeStatus): boolean => OPEN_DISPUTE_STATUSES.includes(s)
+
+/** `mismatch` (from a reconciliation), `worker_flag` (the worker said "nesutinku"), `client_recheck` (the client re-checked an approved period). */
+export const DISPUTE_KINDS = ["mismatch", "worker_flag", "client_recheck"] as const
+export type DisputeKind = (typeof DISPUTE_KINDS)[number]
+
+/** |hours| × hourly rate in cents, rounded to the cent. */
+export const disputeAmountCents = (hours: number, rateCents: number): number => Math.round(Math.abs(hours) * rateCents)
+
+export interface DisputeTotals {
+  open: number
+  openHours: number
+  openCents: number
+  resolved: number
+  recoveredCents: number
+  compensatedCents: number
+  rejectedCents: number
+}
+
+export function disputeTotals(disputes: readonly { status: DisputeStatus; hours: number; amountCents: number }[]): DisputeTotals {
+  const t: DisputeTotals = { open: 0, openHours: 0, openCents: 0, resolved: 0, recoveredCents: 0, compensatedCents: 0, rejectedCents: 0 }
+  for (const d of disputes) {
+    if (isOpenDispute(d.status)) {
+      t.open++
+      t.openHours = roundHours(t.openHours + Math.abs(d.hours))
+      t.openCents += d.amountCents
+    } else {
+      t.resolved++
+      if (d.status === "resolved_accepted") t.recoveredCents += d.amountCents
+      if (d.status === "resolved_compensated") t.compensatedCents += d.amountCents
+      if (d.status === "rejected") t.rejectedCents += d.amountCents
+    }
+  }
+  return t
+}
+
+// ---------------------------------------------------------------- email intake
+
+/** Free mail providers say nothing about the client. */
+const FREE_MAIL = new Set(["gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "yahoo.com", "icloud.com", "gmx.de", "gmx.net", "web.de", "proton.me", "protonmail.com", "inbox.lt", "one.lt"])
+
+/** `Jan <pm@Yard.NL>` → `yard.nl`; `null` for free mail or garbage. */
+export function senderDomain(address: string): string | null {
+  const m = address.trim().toLowerCase().match(/@([a-z0-9.-]+\.[a-z]{2,})>?$/)
+  const d = m?.[1] ?? null
+  return d && !FREE_MAIL.has(d) ? d : null
+}
+
+export const isPdfAttachment = (a: { name: string; type?: string | undefined }): boolean => (a.type ?? "").toLowerCase() === "application/pdf" || /\.pdf$/i.test(a.name)
+
+export interface IntakeClient {
+  id: string
+  /** Contact emails (and any known sender addresses). */
+  emails: readonly string[]
+}
+export interface IntakeProject {
+  id: string
+  code: string
+  clientId: string
+  status: string
+}
+export interface IntakeMatch {
+  clientId: string | null
+  projectId: string | null
+  by: "project_code" | "sender_domain" | null
+}
+
+/**
+ * Which client / project a received timesheet email belongs to: a project
+ * code in the subject, file names or text wins; else the sender's domain
+ * matches a client's contacts, and the client's only active project is taken
+ * (several active projects: the client only, someone picks the project).
+ */
+export function matchIntake(email: { from: string; subject: string; text?: string; fileNames: readonly string[] }, clients: readonly IntakeClient[], projects: readonly IntakeProject[]): IntakeMatch {
+  const hay = fold([email.subject, ...email.fileNames, (email.text ?? "").slice(0, 20_000)].join("\n")).toUpperCase()
+  const open = (p: IntakeProject) => p.status === "active" || p.status === "draft"
+  const byCode = projects
+    .filter((p) => p.code && new RegExp(`(^|[^A-Z0-9])${p.code.toUpperCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^A-Z0-9]|$)`).test(hay))
+    .sort((a, b) => Number(open(b)) - Number(open(a)) || b.code.length - a.code.length)
+  if (byCode[0]) return { clientId: byCode[0].clientId, projectId: byCode[0].id, by: "project_code" }
+  const domain = senderDomain(email.from)
+  if (!domain) return { clientId: null, projectId: null, by: null }
+  const client = clients.find((c) => c.emails.some((e) => senderDomain(e) === domain))
+  if (!client) return { clientId: null, projectId: null, by: null }
+  const theirs = projects.filter((p) => p.clientId === client.id && p.status === "active")
+  return { clientId: client.id, projectId: theirs.length === 1 ? theirs[0]!.id : null, by: "sender_domain" }
+}
+
+/** The range of the rows' dates (`null` for none). */
+export function rowsRange(rows: readonly { date: string }[]): { from: string; to: string } | null {
+  if (!rows.length) return null
+  let from = rows[0]!.date
+  let to = from
+  for (const r of rows) {
+    if (r.date < from) from = r.date
+    if (r.date > to) to = r.date
+  }
+  return { from, to }
+}
+
+// ---------------------------------------------------------------- worker links
+
+/** Personal link tokens: URL-safe, 20–64 characters. Anything else is refused before a lookup. */
+export const WORKER_TOKEN = /^[A-Za-z0-9_-]{20,64}$/
+/** How far back a worker may still enter or change own hours. */
+export const WORKER_EDIT_DAYS = 31
