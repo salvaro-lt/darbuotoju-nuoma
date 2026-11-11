@@ -6,6 +6,7 @@ import { StaffingLogisticsPermissions } from "@digimuza/staffing/logistics/manif
 import { Can } from "@digimuza/system-core/react"
 import { useMutation } from "convex/react"
 import { Pencil, Plus, Trash2 } from "lucide-react"
+import Link from "next/link"
 import { useState, type FormEvent, type ReactNode } from "react"
 import { useAction } from "@/components/app/use-action"
 import { Button } from "@/components/ui/button"
@@ -25,8 +26,40 @@ export function Resources({ plan }: { plan: LogisticsPlan }) {
   return (
     <div className="space-y-6">
       <Accommodations plan={plan} />
+      {plan.poolStays.length > 0 && <PoolStays plan={plan} />}
       <Vehicles plan={plan} />
     </div>
+  )
+}
+
+/** Members housed in the regional pool (/app/logistics/housing). */
+function PoolStays({ plan }: { plan: LogisticsPlan }) {
+  const { t } = useT()
+  const name = new Map(plan.members.map((m) => [m.workerId, m.name]))
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-3">
+        <div className="space-y-1.5">
+          <CardTitle>{t("logistics.pool.inPool")}</CardTitle>
+          <p className="text-sm text-muted-foreground">{t("logistics.pool.lead")}</p>
+        </div>
+        <Button asChild size="sm" variant="outline">
+          <Link href="/app/logistics/housing">{t("logistics.sub.housing")}</Link>
+        </Button>
+      </CardHeader>
+      <CardContent>
+        <ul className="divide-y text-sm">
+          {plan.poolStays.map((s) => (
+            <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+              <span>
+                <span className="font-medium">{name.get(s.workerId) ?? "?"}</span> <span className="text-muted-foreground">· {s.accommodationName}</span>
+              </span>
+              <Period from={s.startDate} to={s.endDate} />
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
   )
 }
 

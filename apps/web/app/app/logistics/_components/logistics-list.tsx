@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { api } from "@/convex/_generated/api"
 import { useT } from "@/lib/i18n/client"
 import { Period, ProjectStatusBadge } from "../../staffing/_components/staffing-ui"
+import { LogisticsSubnav } from "./logistics-subnav"
 import { CountPill, logisticsHref, useLogisticsEnabled } from "./logistics-ui"
 
 export function LogisticsList() {
@@ -20,6 +21,7 @@ export function LogisticsList() {
   return (
     <div>
       <PageHeader title={t("logistics.title")} lead={t("logistics.lead")} />
+      <LogisticsSubnav />
       {!projects ? (
         <Skeleton className="h-64 w-full rounded-xl" />
       ) : projects.length === 0 ? (
