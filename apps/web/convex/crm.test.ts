@@ -59,7 +59,7 @@ describe("crm: install and access", () => {
     const t = setup()
     const superUser = await crmApp(t)
     const { objects } = await superUser.query(api.crm.getCrmSchema, {})
-    expect(objects.map((o) => o.key)).toEqual(["company", "person", "opportunity"])
+    expect(objects.map((o) => o.key)).toEqual(["company", "person", "opportunity", "request"])
     expect(objects[2]!.views.map((v) => v.kind)).toEqual(["kanban", "table"])
     expect(await t.mutation(internal.crm._applyBlueprint, {})).toEqual({ objectsCreated: [], fieldsCreated: [] })
   })

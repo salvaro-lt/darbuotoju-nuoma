@@ -9,7 +9,9 @@
     ".": "./src/index.ts",
     "./manifest": "./src/manifest.ts",
     "./pure": "./src/pure.ts",
-    "./tables": "./src/tables.ts"
+    "./tables": "./src/tables.ts",
+    "./teams/manifest": "./src/teams/manifest.ts",
+    "./teams/matching": "./src/teams/matching.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
