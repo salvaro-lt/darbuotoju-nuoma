@@ -1,4 +1,22 @@
-import { defineModule, type PermissionOf } from "@digimuza/system-core/modules"
+import { defineModule, defineNotificationType, type PermissionOf } from "@digimuza/system-core/modules"
+
+/** To holders of `client:manage`: a client timesheet came in by email and waits for review. Params `{ projectCode, from, fileName, rows }`. */
+export const timesheetsSheetReceived = defineNotificationType({
+  id: "staffing-timesheets.client_sheet_received",
+  moduleId: "staffing-timesheets",
+  defaultChannels: { inApp: true, email: false },
+  description: "Klientų tabelis gautas el. paštu ir laukia peržiūros",
+  params: ["projectCode", "from", "fileName", "rows"],
+})
+
+/** To holders of `client:manage`: a worker marked a day "nesutinku" on the personal link. Params `{ worker, projectCode, date, comment }`. */
+export const timesheetsWorkerDisagrees = defineNotificationType({
+  id: "staffing-timesheets.worker_disagrees",
+  moduleId: "staffing-timesheets",
+  defaultChannels: { inApp: true, email: false },
+  description: "Darbuotojas nesutinka su kliento tabeliu",
+  params: ["worker", "projectCode", "date", "comment"],
+})
 
 /**
  * Timesheets ("Tabeliai"): own daily hours per assignment entered by the site
@@ -39,6 +57,7 @@ export const staffingTimesheets = defineModule({
       permissions: ["staffing-timesheets:entry:read", "staffing-timesheets:entry:write", "staffing-timesheets:week:approve", "staffing-timesheets:client:manage", "staffing-timesheets:subcontractor:export"],
     },
   ],
+  notificationTypes: [timesheetsSheetReceived, timesheetsWorkerDisagrees],
 })
 
 export const StaffingTimesheetsPermissions = {
