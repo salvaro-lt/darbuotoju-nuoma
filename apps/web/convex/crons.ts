@@ -12,6 +12,8 @@ crons.daily("timesheets late client reminders", { hourUTC: 7, minuteUTC: 0 }, in
 crons.daily("staffing-compliance expiry digest", { hourUTC: 5, minuteUTC: 0 }, internal.compliance._dailyDigest)
 // Staffing invoicing: payment reminders via n8n (stage 1 at +3 days overdue, stage 2 at +14).
 crons.daily("staffing-invoicing payment reminders", { hourUTC: 6, minuteUTC: 0 }, internal.invoicing._dailyReminders, {})
+// Staffing invoicing: billing periods ended > 7 days ago without an issued invoice → the director (n8n dr-nuoma-pranesimas).
+crons.daily("staffing-invoicing missing invoices", { hourUTC: 6, minuteUTC: 30 }, internal.invoicing._dailyChainCheck, {})
 // n8n module (convex/n8n.ts, by name): approved assistant writes (n8nOps outbox) → n8n;
 // refresh of the dr-nuoma-tagged workflow cache (inbox link pickers, delivery routing).
 crons.interval("n8n ops", { seconds: 10 }, makeFunctionReference<"action">("n8n:_drain"), {})
