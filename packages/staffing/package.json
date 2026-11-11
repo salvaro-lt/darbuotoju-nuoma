@@ -9,7 +9,10 @@
     ".": "./src/index.ts",
     "./manifest": "./src/manifest.ts",
     "./pure": "./src/pure.ts",
-    "./tables": "./src/tables.ts"
+    "./tables": "./src/tables.ts",
+    "./timesheets/manifest": "./src/timesheets/manifest.ts",
+    "./timesheets/pure": "./src/timesheets/pure.ts",
+    "./timesheets/tables": "./src/timesheets/tables.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

@@ -16,6 +16,7 @@ import type * as automationsConfig from "../automationsConfig.js";
 import type * as crm from "../crm.js";
 import type * as crmBlueprint from "../crmBlueprint.js";
 import type * as crmDemo from "../crmDemo.js";
+import type * as crons from "../crons.js";
 import type * as documents from "../documents.js";
 import type * as finance from "../finance.js";
 import type * as ingest from "../ingest.js";
@@ -26,6 +27,7 @@ import type * as roleAdmin from "../roleAdmin.js";
 import type * as search from "../search.js";
 import type * as staffing from "../staffing.js";
 import type * as system from "../system.js";
+import type * as timesheets from "../timesheets.js";
 
 import type {
   ApiFromModules,
@@ -42,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   crm: typeof crm;
   crmBlueprint: typeof crmBlueprint;
   crmDemo: typeof crmDemo;
+  crons: typeof crons;
   documents: typeof documents;
   finance: typeof finance;
   ingest: typeof ingest;
@@ -52,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   search: typeof search;
   staffing: typeof staffing;
   system: typeof system;
+  timesheets: typeof timesheets;
 }>;
 
 /**
