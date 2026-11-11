@@ -5,6 +5,8 @@ import { ingestEn, ingestLt } from "./ingest-messages"
 import { crmEn, crmLt } from "./crm"
 import { documentsArchiveEn, documentsArchiveLt } from "./documents-archive-messages"
 import { documentsSigningEn, documentsSigningLt } from "./documents-signing-messages"
+import { staffingEn, staffingLt } from "./staffing-messages"
+// Staffing areas: one import each below.
 
 export const LOCALES = ["lt", "en"] as const
 export type Locale = (typeof LOCALES)[number]
@@ -683,6 +685,8 @@ const lt = {
   "super.stopped": "Grįžote į Super",
   ...crmLt,
   ...documentsArchiveLt,
+  ...staffingLt,
+  // staffing areas (lt): one spread each below
   ...documentsSigningLt,
 } as const
 
@@ -1360,6 +1364,8 @@ const en: Record<MessageKey, string> = {
   "super.stopped": "You're back to Super",
   ...crmEn,
   ...documentsArchiveEn,
+  ...staffingEn,
+  // staffing areas (en): one spread each below
   ...documentsSigningEn,
 }
 

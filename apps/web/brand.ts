@@ -8,11 +8,11 @@
  */
 export const brand = {
   /** Shown in the sign-in screens, the navigation and the page title. */
-  name: "Įmonės sistema",
+  name: "Darbuotojų nuoma",
   /** One-line description under the name on the sign-in screen. Per language. */
   tagline: {
-    lt: "Vidinė įmonės darbo sistema",
-    en: "Internal company workspace",
+    lt: "Darbuotojų, komandų ir projektų sistema",
+    en: "Workers, teams and projects",
   },
   /** Path under /public, e.g. "/brand/logo.svg". null shows a monogram from `name`. */
   logo: null as string | null,

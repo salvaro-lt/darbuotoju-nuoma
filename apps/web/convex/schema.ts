@@ -1,5 +1,6 @@
 import { crmTables } from "@digimuza/crm"
 import { documentsTables } from "@digimuza/documents"
+import { staffingTables } from "@digimuza/staffing/tables"
 import { aiTables } from "@digimuza/system-core/ai"
 import { automationsTables } from "@digimuza/system-core/automations"
 import { systemTables } from "@digimuza/system-core/convex"
@@ -29,4 +30,7 @@ export default defineSchema({
   ...documentsTables,
   // Gavimas (ingest): Resend setup, inboxes, webhook events, received emails (convex/ingest.ts).
   ...ingestTables,
+  // Staffing base (packages/staffing): trades, certificate types, workers, certificates, clients, projects, assignments (convex/staffing.ts).
+  ...staffingTables,
+  // Staffing areas: one line each below (...timesheetsTables, ...).
 })

@@ -24,6 +24,7 @@ import type * as mcp from "../mcp.js";
 import type * as notifications from "../notifications.js";
 import type * as roleAdmin from "../roleAdmin.js";
 import type * as search from "../search.js";
+import type * as staffing from "../staffing.js";
 import type * as system from "../system.js";
 
 import type {
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   roleAdmin: typeof roleAdmin;
   search: typeof search;
+  staffing: typeof staffing;
   system: typeof system;
 }>;
 
