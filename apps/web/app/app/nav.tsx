@@ -42,6 +42,7 @@ import { McpPermissions } from "@digimuza/system-core/mcp"
 import { CrmPermissions } from "@digimuza/crm/manifest"
 import { DocumentsPermissions } from "@digimuza/documents/manifest"
 import { StaffingPermissions } from "@digimuza/staffing/manifest"
+import { TimesheetsNavItem } from "./timesheets/_components/timesheets-ui"
 import { useStaffingEnabled } from "./staffing/_components/staffing-ui"
 import { TeamsNavItem } from "./teams/_components/teams-nav"
 import { LogisticsNavItem } from "./logistics/_components/logistics-nav"
@@ -136,6 +137,7 @@ export function AppSidebar() {
                 {/* staffing areas: one NavItem each below */}
                 <TeamsNavItem />
                 <LogisticsNavItem />
+                <TimesheetsNavItem render={(p) => <NavItem {...p} />} />
                 {canCatalog && <NavItem href="/app/staffing/catalog" icon={<Library />} label={t("staffing.nav.catalog")} />}
               </SidebarMenu>
             </SidebarGroupContent>

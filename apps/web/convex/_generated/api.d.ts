@@ -29,6 +29,7 @@ import type * as search from "../search.js";
 import type * as staffing from "../staffing.js";
 import type * as system from "../system.js";
 import type * as teams from "../teams.js";
+import type * as timesheets from "../timesheets.js";
 
 import type {
   ApiFromModules,
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   staffing: typeof staffing;
   system: typeof system;
   teams: typeof teams;
+  timesheets: typeof timesheets;
 }>;
 
 /**
