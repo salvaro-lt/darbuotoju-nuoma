@@ -4,12 +4,10 @@ import { Asterisk, Bot, ChevronDown, ChevronRight, Loader2, Plug, ShieldAlert, S
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
-import { EmptyState } from "@/components/app/empty-state"
 import { useAction } from "@/components/app/use-action"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { aiApi } from "@/lib/ai/api"
 import type { ThreadView } from "@/lib/ai/types"
 import { formatDate, formatTime } from "@/lib/format"
@@ -75,25 +73,22 @@ export function NewThreadButton({ onCreated, className, variant = "outline" }: {
 }
 
 type Group = "today" | "yesterday" | "week" | "older"
-type Filter = "all" | "mcp" | "app"
 type Connection = { id: string; clientName: string; name: string | null; status: "active" | "revoked"; lastActivityAt: number | null; createdAt: number }
 
 /**
- * List filter in the URL (`?threads=mcp|app`, `?connection=<id>` from a group
- * header or the connections list), kept on thread links so it survives navigation.
+ * Connection focus in the URL (`?connection=<id>` from a group header or the
+ * connections list), kept on thread links so it survives navigation.
  */
 function useThreadFilter() {
   const params = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
   const connection = params.get("connection")
-  const raw = params.get("threads")
-  const filter: Filter = connection ? "mcp" : raw === "mcp" || raw === "app" ? raw : "all"
   const query = params.toString()
   const go = (q: URLSearchParams) => router.replace(q.size ? `${pathname}?${q}` : pathname)
-  const setFilter = (next: Filter) => go(new URLSearchParams(next === "all" ? {} : { threads: next }))
+  const clearConnection = () => go(new URLSearchParams())
   const openConnection = (id: string) => go(new URLSearchParams({ connection: id }))
-  return { filter, connection, setFilter, openConnection, suffix: query ? `?${query}` : "" }
+  return { connection, clearConnection, openConnection, suffix: query ? `?${query}` : "" }
 }
 
 /** An icon per external client: ChatGPT / OpenAI, Claude, anything else. */
@@ -162,7 +157,7 @@ function ThreadRow({ th, activeId, suffix, onNavigate, pill }: { th: ThreadView;
 }
 
 /** The person's own conversations, grouped by day. */
-function MineSection({ activeId, suffix, onNavigate, titled }: { activeId?: string | undefined; suffix: string; onNavigate?: (() => void) | undefined; titled: boolean }) {
+function MineSection({ activeId, suffix, onNavigate }: { activeId?: string | undefined; suffix: string; onNavigate?: (() => void) | undefined }) {
   const { t } = useT()
   const [limit, setLimit] = useState(PAGE)
   const page = useQuery(aiApi.listThreads, { limit, source: "app" })
@@ -177,7 +172,7 @@ function MineSection({ activeId, suffix, onNavigate, titled }: { activeId?: stri
   }
   return (
     <section className="pt-3">
-      {titled && <h2 className="px-2 pb-1 text-xs font-semibold text-foreground/70">{t("ai.group.mine")}</h2>}
+      <h2 className="px-2 pb-1 text-xs font-semibold text-foreground/70">{t("ai.group.mine")}</h2>
       {page.items.length === 0 ? (
         <p className="px-2 py-1 text-xs text-muted-foreground">{t("ai.filter.empty.app")}</p>
       ) : (
@@ -265,13 +260,13 @@ function Skeletons({ count = 5 }: { count?: number }) {
 
 /**
  * The caller's conversations, live, grouped by source: "My conversations" first,
- * then one group per MCP connection (ChatGPT, Claude Code…) with its newest threads.
- * Tabs narrow to one side; a group header narrows to that connection.
+ * then one group per MCP connection (ChatGPT, Claude Code…) with its newest threads
+ * below. A group header narrows the list to that connection.
  */
 export function AiThreadList({ activeId, onNavigate }: { activeId?: string | undefined; onNavigate?: () => void }) {
   const { t } = useT()
-  const { filter, connection, setFilter, openConnection, suffix } = useThreadFilter()
-  const connections = useQuery(api.mcp.listMcpConnections, filter === "app" ? "skip" : {}) as Connection[] | undefined
+  const { connection, clearConnection, openConnection, suffix } = useThreadFilter()
+  const connections = useQuery(api.mcp.listMcpConnections, {}) as Connection[] | undefined
   // Groups: connections that talked, or that can still talk; newest activity first.
   const groups = (connections ?? [])
     .filter((c) => c.lastActivityAt !== null || c.status === "active")
@@ -287,24 +282,11 @@ export function AiThreadList({ activeId, onNavigate }: { activeId?: string | und
           <CopyMcpLinkButton className="flex-1" />
           <McpConnectionsSheetButton />
         </div>
-        <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)} aria-label={t("ai.filter.label")}>
-          <TabsList className="grid h-auto w-full grid-cols-3">
-            <TabsTrigger value="all" className="text-xs">
-              {t("ai.filter.all")}
-            </TabsTrigger>
-            <TabsTrigger value="mcp" className="text-xs whitespace-normal">
-              {t("ai.filter.mcp")}
-            </TabsTrigger>
-            <TabsTrigger value="app" className="text-xs">
-              {t("ai.filter.app")}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
         {focused && (
           <p className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
             <McpClientPill clientName={focused.clientName} />
             <span className="min-w-0 flex-1 truncate">{focused.name ?? ""}</span>
-            <button type="button" onClick={() => setFilter("mcp")} aria-label={t("common.cancel")} className="rounded p-0.5 hover:bg-muted hover:text-foreground">
+            <button type="button" onClick={clearConnection} aria-label={t("common.cancel")} className="rounded p-0.5 hover:bg-muted hover:text-foreground">
               <X className="size-3.5" />
             </button>
           </p>
@@ -319,19 +301,10 @@ export function AiThreadList({ activeId, onNavigate }: { activeId?: string | und
           )
         ) : (
           <>
-            {filter !== "mcp" && <MineSection activeId={activeId} suffix={suffix} onNavigate={onNavigate} titled={filter === "all"} />}
-            {filter !== "app" &&
-              (connections === undefined ? (
-                filter === "mcp" && <Skeletons />
-              ) : groups.length === 0 ? (
-                filter === "mcp" && (
-                  <div className="p-1 pt-3">
-                    <EmptyState icon={<Plug />} title={t("ai.empty.title")} body={t("ai.filter.empty.mcp")} />
-                  </div>
-                )
-              ) : (
-                groups.map((c) => <ConnectionSection key={c.id} conn={c} limit={5} activeId={activeId} suffix={suffix} onNavigate={onNavigate} onOpen={() => openConnection(c.id)} />)
-              ))}
+            <MineSection activeId={activeId} suffix={suffix} onNavigate={onNavigate} />
+            {groups.map((c) => (
+              <ConnectionSection key={c.id} conn={c} limit={5} activeId={activeId} suffix={suffix} onNavigate={onNavigate} onOpen={() => openConnection(c.id)} />
+            ))}
           </>
         )}
       </nav>

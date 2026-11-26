@@ -210,11 +210,6 @@ const lt = {
   "ai.scrollDown": "Į pabaigą",
 
   // AI integrations: threads from ChatGPT / Claude (DIG-82)
-  "ai.filter.label": "Rodyti pokalbius",
-  "ai.filter.all": "Visi",
-  "ai.filter.mcp": "Iš ChatGPT ir Claude",
-  "ai.filter.app": "Mano",
-  "ai.filter.empty.mcp": "ChatGPT ar Claude čia dar nesikalbėjo. Prijunkite juos skiltyje „AI integracijos“.",
   "ai.filter.empty.app": "Savo pokalbių dar nepradėjote.",
   "ai.mcp.badge": "Per MCP: {client}",
   "ai.mcp.banner": "Šį pokalbį vedė {client} per MCP",
@@ -896,11 +891,6 @@ const en: Record<MessageKey, string> = {
   "ai.scrollDown": "Jump to latest",
 
   // AI integrations: threads from ChatGPT / Claude (DIG-82)
-  "ai.filter.label": "Show conversations",
-  "ai.filter.all": "All",
-  "ai.filter.mcp": "From ChatGPT and Claude",
-  "ai.filter.app": "Mine",
-  "ai.filter.empty.mcp": "ChatGPT and Claude have not talked here yet. Connect them under “AI integrations”.",
   "ai.filter.empty.app": "You have not started a conversation yet.",
   "ai.mcp.badge": "Via MCP: {client}",
   "ai.mcp.banner": "{client} led this conversation over MCP",
