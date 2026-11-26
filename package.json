@@ -15,6 +15,7 @@
     "lint": "pnpm -r --no-bail lint",
     "test": "pnpm -r --no-bail test",
     "codegen": "pnpm --filter @app/web codegen",
+    "demo:seed": "pnpm --filter @app/web demo:seed",
     "core:vendor": "pnpm --filter @app/web core:vendor",
     "core:link": "pnpm --filter @app/web core:link",
     "core:npm": "pnpm --filter @app/web core:npm",

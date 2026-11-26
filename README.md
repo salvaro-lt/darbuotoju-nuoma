@@ -1,3 +1,24 @@
+# Darbuotojų nuoma (demo)
+
+Staffing demo (workers, clients, projects, teams, timesheets, planning, logistics, compliance,
+invoicing, CRM). For illustration only: it runs on localhost against a local Convex backend.
+
+## Run the demo locally
+
+```bash
+pnpm install
+pnpm dev            # Next.js on http://localhost:3000 + local Convex (first run: pick "local deployment")
+pnpm demo:seed      # in a second terminal: catalog + demo data for every area (safe to re-run)
+```
+
+On a fresh machine, do the one-time Convex and `.env.local` setup in [Local development](#local-development)
+first. Your sign-in email must be in `SUPER_USER_EMAILS`. To start from clean demo data, run
+`pnpm demo:seed -- --reset`.
+
+The rest of this README is the `system-template` guide this app was built from.
+
+---
+
 # system-template
 
 Starter app for a new client system: **Next.js 16 + Convex** on
